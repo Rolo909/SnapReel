@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "snapreel"
+version = "0.1.0"
+description = "Autonomous content factory for Reels / Shorts / TikTok video generation"
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "SnapReel Team"}
+]
+
+dependencies = [
+    "PySide6>=6.7",
+    "llama-cpp-python>=0.3.0",
+    "edge-tts>=6.1",
+    "faster-whisper>=1.0",
+    "huggingface-hub>=0.24",
+    "psutil>=5.9",
+    "pynvml>=11.5",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "structlog>=24.0",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "torch>=2.3",
+    "diffusers>=0.30",
+    "transformers>=4.40",
+    "accelerate>=0.30",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-qt>=4.3",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+snapreel = "snapreel.__main__:main"
+
+[project.gui-scripts]
+snapreel-gui = "snapreel.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/snapreel"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM", "TCH", "RUF"]
+ignore = ["ANN101", "ANN102"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["snapreel"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
