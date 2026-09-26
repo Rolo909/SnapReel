@@ -19,3 +19,5 @@ output/
 *.avi
 *.mkv
 .env
+/rules.md
+/TASK_PLAN.md
