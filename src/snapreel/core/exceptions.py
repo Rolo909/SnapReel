@@ -59,3 +59,11 @@ class DownloadError(SnapReelError):
 
 class PipelineCancelledError(SnapReelError):
     """Raised when the user cancels pipeline execution."""
+
+
+class ComfyUIError(SnapReelError):
+    """Raised when ComfyUI headless server interaction fails."""
+
+    def __init__(self, message: str, cause: Exception | None = None) -> None:
+        self.cause = cause
+        super().__init__(f"ComfyUI error: {message}")

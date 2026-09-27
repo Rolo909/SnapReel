@@ -3,6 +3,7 @@
 from snapreel.core.config import AppConfig
 from snapreel.core.context import PipelineContext, SceneData
 from snapreel.core.exceptions import (
+    ComfyUIError,
     DownloadError,
     FFmpegError,
     HardwareDetectionError,
@@ -16,6 +17,7 @@ from snapreel.core.node_base import NodeResult, NodeStatus, PipelineNode, Progre
 
 __all__ = [
     "AppConfig",
+    "ComfyUIError",
     "DownloadError",
     "FFmpegError",
     "HardwareDetectionError",
