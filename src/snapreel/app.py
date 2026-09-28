@@ -27,6 +27,11 @@ def load_stylesheet(app: QApplication) -> None:
 
 def run_app() -> int:
     """Initialize and run the QApplication."""
+    from snapreel.core.config import AppConfig
+    from snapreel.infra.downloader import ModelDownloader
+    from snapreel.gui.widgets.model_setup_wizard import ModelSetupWizard
+    from PySide6.QtWidgets import QDialog
+    
     app = QApplication(sys.argv)
 
     # Configure global application settings
@@ -36,8 +41,22 @@ def run_app() -> int:
     # Load stylesheet
     load_stylesheet(app)
 
+    # Load config
+    config = AppConfig()
+
+    # Model Setup Workflow
+    downloader = ModelDownloader(config.get_models_dir())
+    # By default, check models required for basic operations
+    missing_models = downloader.get_missing_models(["llm_7b", "whisper", "sdxl_turbo"])
+    
+    if missing_models:
+        wizard = ModelSetupWizard(downloader, missing_models)
+        if wizard.exec() != QDialog.DialogCode.Accepted:
+            # The user cancelled the download or it failed, so we can't start the app
+            return 1
+
     # Create and show main window
-    window = MainWindow()
+    window = MainWindow(config)
     window.show()
 
     return app.exec()
