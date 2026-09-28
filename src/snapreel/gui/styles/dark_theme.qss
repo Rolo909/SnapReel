@@ -1,0 +1,80 @@
+/* Basic Dark Theme QSS for SnapReel */
+
+QWidget {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+}
+
+QMainWindow {
+    background-color: #11111b;
+}
+
+QTabBar::tab {
+    background: #181825;
+    color: #a6adc8;
+    padding: 8px 16px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border: 1px solid #313244;
+    border-bottom: none;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-color: #89b4fa;
+    border-bottom: 2px solid #89b4fa;
+}
+
+QTabBar::tab:hover {
+    background: #313244;
+}
+
+QPushButton {
+    background-color: #89b4fa;
+    color: #11111b;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #b4befe;
+}
+
+QPushButton:pressed {
+    background-color: #74c7ec;
+}
+
+QPushButton:disabled {
+    background-color: #313244;
+    color: #6c7086;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit {
+    background-color: #181825;
+    border: 1px solid #313244;
+    border-radius: 4px;
+    padding: 4px;
+    color: #cdd6f4;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #89b4fa;
+}
+
+QProgressBar {
+    border: 1px solid #313244;
+    border-radius: 4px;
+    text-align: center;
+    background-color: #181825;
+}
+
+QProgressBar::chunk {
+    background-color: #a6e3a1;
+    border-radius: 3px;
+}

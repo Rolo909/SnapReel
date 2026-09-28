@@ -21,9 +21,10 @@ def main() -> None:
         print("  -h, --help       Show this help and exit")
         sys.exit(0)
 
-    # Full GUI launch (Phase D will replace this stub)
-    print(f"SnapReel v{__version__} — Content Factory")
-    print("GUI will be available after Phase D implementation.")
+    # Full GUI launch
+    from snapreel.app import run_app
+
+    sys.exit(run_app())
 
 
 if __name__ == "__main__":
