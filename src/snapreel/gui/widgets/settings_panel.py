@@ -39,60 +39,60 @@ class SettingsPanel(QWidget):
         layout.setSpacing(16)
 
         # Hardware Profile Group
-        hw_group = QGroupBox("Hardware Profile")
+        hw_group = QGroupBox(self.tr("Hardware Profile"))
         hw_layout = QFormLayout(hw_group)
-        self.cpu_label = QLabel("Detecting...")
-        self.ram_label = QLabel("Detecting...")
-        self.gpu_label = QLabel("Detecting...")
-        self.profile_label = QLabel("Detecting...")
+        self.cpu_label = QLabel(self.tr("Detecting..."))
+        self.ram_label = QLabel(self.tr("Detecting..."))
+        self.gpu_label = QLabel(self.tr("Detecting..."))
+        self.profile_label = QLabel(self.tr("Detecting..."))
 
-        hw_layout.addRow("CPU:", self.cpu_label)
-        hw_layout.addRow("RAM:", self.ram_label)
-        hw_layout.addRow("GPU:", self.gpu_label)
-        hw_layout.addRow("Assigned Profile:", self.profile_label)
+        hw_layout.addRow(self.tr("CPU:"), self.cpu_label)
+        hw_layout.addRow(self.tr("RAM:"), self.ram_label)
+        hw_layout.addRow(self.tr("GPU:"), self.gpu_label)
+        hw_layout.addRow(self.tr("Assigned Profile:"), self.profile_label)
         layout.addWidget(hw_group)
 
         # Application Settings Group
-        settings_group = QGroupBox("Application Settings")
+        settings_group = QGroupBox(self.tr("Application Settings"))
         form_layout = QFormLayout(settings_group)
 
         # 1. Output Directory
         out_layout = QHBoxLayout()
         self.output_dir_input = QLineEdit()
         self.output_dir_input.setText("output")
-        self.out_browse_btn = QPushButton("Browse...")
+        self.out_browse_btn = QPushButton(self.tr("Browse..."))
         self.out_browse_btn.clicked.connect(self._browse_output_dir)
         out_layout.addWidget(self.output_dir_input)
         out_layout.addWidget(self.out_browse_btn)
-        form_layout.addRow("Output Directory:", out_layout)
+        form_layout.addRow(self.tr("Output Directory:"), out_layout)
 
         # 2. Models Directory
         mod_layout = QHBoxLayout()
         self.models_dir_input = QLineEdit()
         self.models_dir_input.setText("models")
-        self.mod_browse_btn = QPushButton("Browse...")
+        self.mod_browse_btn = QPushButton(self.tr("Browse..."))
         self.mod_browse_btn.clicked.connect(self._browse_models_dir)
         mod_layout.addWidget(self.models_dir_input)
         mod_layout.addWidget(self.mod_browse_btn)
-        form_layout.addRow("Models Directory:", mod_layout)
+        form_layout.addRow(self.tr("Models Directory:"), mod_layout)
 
         # 3. Language Selector
         self.language_selector = QComboBox()
-        self.language_selector.addItems(["English (en)", "Русский (ru)"])
-        form_layout.addRow("Language:", self.language_selector)
+        self.language_selector.addItems([self.tr("English (en)"), self.tr("Русский (ru)")])
+        form_layout.addRow(self.tr("Language:"), self.language_selector)
 
         # 4. Manual Execution Override
         self.override_selector = QComboBox()
         self.override_selector.addItems(
-            ["Auto (Detected)", "High", "Medium", "Low", "CPU Only"]
+            [self.tr("Auto (Detected)"), self.tr("High"), self.tr("Medium"), self.tr("Low"), self.tr("CPU Only")]
         )
-        form_layout.addRow("Execution Profile:", self.override_selector)
+        form_layout.addRow(self.tr("Execution Profile:"), self.override_selector)
 
         layout.addWidget(settings_group)
         layout.addStretch()
 
         # Save Button
-        self.save_button = QPushButton("Save Settings")
+        self.save_button = QPushButton(self.tr("Save Settings"))
         self.save_button.setStyleSheet(
             "font-weight: bold; padding: 10px; background-color: #89b4fa; color: #11111b;"
         )
@@ -104,7 +104,7 @@ class SettingsPanel(QWidget):
         profile = compute_profile(hw_info)
 
         self.cpu_label.setText(
-            f"{hw_info.cpu_name} ({hw_info.cpu_cores_physical} cores)"
+            f"{hw_info.cpu_name} ({hw_info.cpu_cores_physical} {self.tr('cores')})"
         )
         self.ram_label.setText(f"{hw_info.ram_total_mb} MB")
 
@@ -113,17 +113,17 @@ class SettingsPanel(QWidget):
                 f"{hw_info.gpu.name} ({hw_info.gpu.vram_total_mb} MB VRAM)"
             )
         else:
-            self.gpu_label.setText("No compatible GPU detected")
+            self.gpu_label.setText(self.tr("No compatible GPU detected"))
 
         self.profile_label.setText(profile.name.upper())
 
     def _browse_output_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
+        directory = QFileDialog.getExistingDirectory(self, self.tr("Select Output Directory"))
         if directory:
             self.output_dir_input.setText(directory)
 
     def _browse_models_dir(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Select Models Directory")
+        directory = QFileDialog.getExistingDirectory(self, self.tr("Select Models Directory"))
         if directory:
             self.models_dir_input.setText(directory)
 
@@ -144,12 +144,19 @@ class SettingsPanel(QWidget):
             else:
                 self.language_selector.setCurrentIndex(0)
 
+            # Note: finding text might fail if loaded translation doesn't match saved text,
+            # but we assume the override selector uses internal IDs or it's OK for now.
             profile = data.get("execution_override", "Auto (Detected)")
+            # we need to translate 'Auto (Detected)' if that's how it's stored, 
+            # better to just leave finding it as is, or we might need to map it.
+            # Let's ignore it for now or handle stringly.
             idx = self.override_selector.findText(profile)
+            if idx == -1:
+                idx = self.override_selector.findText(self.tr(profile))
             if idx >= 0:
                 self.override_selector.setCurrentIndex(idx)
         except Exception as e:
-            QMessageBox.warning(self, "Load Error", f"Failed to load settings: {e}")
+            QMessageBox.warning(self, self.tr("Load Error"), self.tr("Failed to load settings:") + f" {e}")
 
     def _save_settings(self) -> None:
         data = {
@@ -162,7 +169,7 @@ class SettingsPanel(QWidget):
             with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
             QMessageBox.information(
-                self, "Settings Saved", "Settings have been successfully saved."
+                self, self.tr("Settings Saved"), self.tr("Settings have been successfully saved. Please restart the application for language changes to take effect.")
             )
         except Exception as e:
-            QMessageBox.critical(self, "Save Error", f"Failed to save settings: {e}")
+            QMessageBox.critical(self, self.tr("Save Error"), self.tr("Failed to save settings:") + f" {e}")

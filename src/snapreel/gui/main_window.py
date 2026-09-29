@@ -67,10 +67,10 @@ class MainWindow(QMainWindow):
         self.settings_tab = SettingsPanel()
         self.logs_tab = LogViewer()
 
-        self.tab_widget.addTab(self.wizard_tab, "Project")
-        self.tab_widget.addTab(self.pipeline_tab, "Pipeline")
-        self.tab_widget.addTab(self.logs_tab, "Logs")
-        self.tab_widget.addTab(self.settings_tab, "Settings")
+        self.tab_widget.addTab(self.wizard_tab, self.tr("Project"))
+        self.tab_widget.addTab(self.pipeline_tab, self.tr("Pipeline"))
+        self.tab_widget.addTab(self.logs_tab, self.tr("Logs"))
+        self.tab_widget.addTab(self.settings_tab, self.tr("Settings"))
 
     def _start_generation(self, user_config: dict) -> None:
         """Start the generation pipeline with the given config."""
@@ -125,21 +125,21 @@ class MainWindow(QMainWindow):
         self.pipeline_control.set_running_state(False)
         if ctx.final_video_path and ctx.final_video_path.exists():
             self.preview_player.load_video(QUrl.fromLocalFile(str(ctx.final_video_path.absolute())))
-            QMessageBox.information(self, "Success", "Video generation completed successfully!")
+            QMessageBox.information(self, self.tr("Success"), self.tr("Video generation completed successfully!"))
         
     def _on_pipeline_failed(self, error: str) -> None:
         self.pipeline_control.set_running_state(False)
-        QMessageBox.critical(self, "Error", f"Pipeline failed:\n{error}")
+        QMessageBox.critical(self, self.tr("Error"), self.tr("Pipeline failed:\n") + f"{error}")
 
     def _on_pipeline_cancelled(self) -> None:
         self.pipeline_control.set_running_state(False)
-        QMessageBox.warning(self, "Cancelled", "Pipeline execution was cancelled.")
+        QMessageBox.warning(self, self.tr("Cancelled"), self.tr("Pipeline execution was cancelled."))
 
     def _on_node_started(self, index: int, name: str) -> None:
         simple_name = name.replace("Node", "")
         if simple_name in ("VisualStatic", "VisualVideo"):
             simple_name = "Visual"
-        self.progress_dashboard.update_progress(simple_name, 0, "Running...")
+        self.progress_dashboard.update_progress(simple_name, 0, self.tr("Running..."))
 
     def _on_node_progress(self, index: int, percent: int, message: str) -> None:
         if self.orchestrator and index < len(self.orchestrator.nodes):
@@ -153,4 +153,4 @@ class MainWindow(QMainWindow):
         simple_name = name.replace("Node", "")
         if simple_name in ("VisualStatic", "VisualVideo"):
             simple_name = "Visual"
-        self.progress_dashboard.update_progress(simple_name, 100, "Done")
+        self.progress_dashboard.update_progress(simple_name, 100, self.tr("Done"))

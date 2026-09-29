@@ -53,7 +53,7 @@ class ModelSetupWizard(QDialog):
         self._progress_bars: dict[str, QProgressBar] = {}
         self._status_labels: dict[str, QLabel] = {}
 
-        self.setWindowTitle("SnapReel - Initial Setup")
+        self.setWindowTitle(self.tr("SnapReel - Initial Setup"))
         self.resize(600, 400)
         self.setModal(True)
         # Prevent closing by 'X' or Escape while downloading
@@ -65,11 +65,11 @@ class ModelSetupWizard(QDialog):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         
-        title = QLabel("Downloading Required Models")
+        title = QLabel(self.tr("Downloading Required Models"))
         title.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(title)
         
-        desc = QLabel("This is your first launch (or models are missing). We need to download AI models before you can generate videos. This may take a while depending on your internet connection.")
+        desc = QLabel(self.tr("This is your first launch (or models are missing). We need to download AI models before you can generate videos. This may take a while depending on your internet connection."))
         desc.setWordWrap(True)
         layout.addWidget(desc)
         layout.addSpacing(20)
@@ -87,7 +87,7 @@ class ModelSetupWizard(QDialog):
             progress.setRange(0, 100)
             progress.setValue(0)
             
-            status = QLabel("Pending")
+            status = QLabel(self.tr("Pending"))
             status.setMinimumWidth(100)
             
             h_layout.addWidget(name_label)
@@ -101,7 +101,7 @@ class ModelSetupWizard(QDialog):
             
         layout.addStretch()
         
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton(self.tr("Cancel"))
         self.cancel_button.clicked.connect(self.reject)
         layout.addWidget(self.cancel_button, alignment=Qt.AlignRight)
 
@@ -116,22 +116,22 @@ class ModelSetupWizard(QDialog):
     def _on_model_started(self, key: str, name: str):
         if key in self._progress_bars:
             self._progress_bars[key].setRange(0, 0) # Indeterminate
-            self._status_labels[key].setText("Downloading...")
+            self._status_labels[key].setText(self.tr("Downloading..."))
             self._status_labels[key].setStyleSheet("color: #89b4fa;")
 
     def _on_model_finished(self, key: str):
         if key in self._progress_bars:
             self._progress_bars[key].setRange(0, 100)
             self._progress_bars[key].setValue(100)
-            self._status_labels[key].setText("Done")
+            self._status_labels[key].setText(self.tr("Done"))
             self._status_labels[key].setStyleSheet("color: #a6e3a1;")
 
     def _on_all_finished(self):
-        QMessageBox.information(self, "Success", "All models downloaded successfully!")
+        QMessageBox.information(self, self.tr("Success"), self.tr("All models downloaded successfully!"))
         self.accept()
 
     def _on_error(self, error: str):
-        QMessageBox.critical(self, "Download Error", f"An error occurred while downloading models:\n{error}")
+        QMessageBox.critical(self, self.tr("Download Error"), self.tr("An error occurred while downloading models:\n") + f"{error}")
         self.reject()
         
     def closeEvent(self, event):

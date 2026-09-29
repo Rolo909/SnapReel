@@ -37,34 +37,34 @@ class ProjectWizard(QWidget):
         layout.setSpacing(16)
 
         # Title
-        title_label = QLabel("New Project")
+        title_label = QLabel(self.tr("New Project"))
         title_label.setStyleSheet("font-size: 24px; font-weight: bold;")
         layout.addWidget(title_label)
 
         # Config Group
-        config_group = QGroupBox("Project Settings")
+        config_group = QGroupBox(self.tr("Project Settings"))
         form_layout = QFormLayout(config_group)
         form_layout.setSpacing(12)
 
         # 1. Topic input
         self.topic_input = QLineEdit()
         self.topic_input.setPlaceholderText(
-            "e.g. History of the Roman Empire, 10 facts about space..."
+            self.tr("e.g. History of the Roman Empire, 10 facts about space...")
         )
-        form_layout.addRow("Topic:", self.topic_input)
+        form_layout.addRow(self.tr("Topic:"), self.topic_input)
 
         # 2. Style selector
         self.style_selector = QComboBox()
         self.style_selector.addItems(
             [
-                "Cinematic",
-                "Anime / Manga",
-                "Documentary / Realistic",
-                "Cyberpunk",
-                "Cartoon / 3D Animation",
+                self.tr("Cinematic"),
+                self.tr("Anime / Manga"),
+                self.tr("Documentary / Realistic"),
+                self.tr("Cyberpunk"),
+                self.tr("Cartoon / 3D Animation"),
             ]
         )
-        form_layout.addRow("Visual Style:", self.style_selector)
+        form_layout.addRow(self.tr("Visual Style:"), self.style_selector)
 
         # 3. Voice picker
         self.voice_picker = QComboBox()
@@ -76,40 +76,40 @@ class ProjectWizard(QWidget):
                 "ru-RU-SvetlanaNeural (Female)",
             ]
         )
-        form_layout.addRow("Voice:", self.voice_picker)
+        form_layout.addRow(self.tr("Voice:"), self.voice_picker)
 
         # 4. Visual mode toggle
         mode_layout = QHBoxLayout()
-        self.mode_static = QRadioButton("Static (Ken Burns)")
-        self.mode_video = QRadioButton("Video (AI Generated)")
+        self.mode_static = QRadioButton(self.tr("Static (Ken Burns)"))
+        self.mode_video = QRadioButton(self.tr("Video (AI Generated)"))
         self.mode_static.setChecked(True)
         mode_layout.addWidget(self.mode_static)
         mode_layout.addWidget(self.mode_video)
         mode_layout.addStretch()
-        form_layout.addRow("Visual Mode:", mode_layout)
+        form_layout.addRow(self.tr("Visual Mode:"), mode_layout)
 
         # 5. Scene count
         self.scene_count = QSpinBox()
         self.scene_count.setRange(3, 15)
         self.scene_count.setValue(5)
-        form_layout.addRow("Scene Count:", self.scene_count)
+        form_layout.addRow(self.tr("Scene Count:"), self.scene_count)
 
         # 6. Music file browser
         music_layout = QHBoxLayout()
         self.music_path = QLineEdit()
-        self.music_path.setPlaceholderText("Select background music...")
+        self.music_path.setPlaceholderText(self.tr("Select background music..."))
         self.music_path.setReadOnly(True)
-        self.browse_button = QPushButton("Browse...")
+        self.browse_button = QPushButton(self.tr("Browse..."))
         self.browse_button.clicked.connect(self._browse_music)
         music_layout.addWidget(self.music_path)
         music_layout.addWidget(self.browse_button)
-        form_layout.addRow("Background Music:", music_layout)
+        form_layout.addRow(self.tr("Background Music:"), music_layout)
 
         layout.addWidget(config_group)
         layout.addStretch()
 
         # Generate Button
-        self.generate_button = QPushButton("Generate Video")
+        self.generate_button = QPushButton(self.tr("Generate Video"))
         self.generate_button.setStyleSheet("font-size: 16px; padding: 12px;")
         self.generate_button.clicked.connect(self._on_generate_clicked)
         layout.addWidget(self.generate_button)
@@ -118,9 +118,9 @@ class ProjectWizard(QWidget):
         """Open a file dialog to select background music."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select Background Music",
+            self.tr("Select Background Music"),
             "",
-            "Audio Files (*.mp3 *.wav *.aac);;All Files (*)",
+            self.tr("Audio Files (*.mp3 *.wav *.aac);;All Files (*)"),
         )
         if file_path:
             self.music_path.setText(file_path)

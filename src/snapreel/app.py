@@ -13,8 +13,10 @@ from snapreel.gui.main_window import MainWindow
 
 def load_stylesheet(app: QApplication) -> None:
     """Load the application dark theme stylesheet."""
-    # Load the stylesheet from the styles directory
-    style_path = Path(__file__).parent / "gui" / "styles" / "dark_theme.qss"
+    from snapreel.utils.paths import get_app_dir
+    style_path = get_app_dir() / "src" / "snapreel" / "gui" / "styles" / "dark_theme.qss"
+    if getattr(sys, "frozen", False):
+        style_path = get_app_dir() / "src" / "snapreel" / "gui" / "styles" / "dark_theme.qss"
     if style_path.exists():
         try:
             with open(style_path, encoding="utf-8") as f:
@@ -38,8 +40,47 @@ def run_app() -> int:
     app.setApplicationName("SnapReel")
     app.setApplicationVersion(__version__)
 
+    from snapreel.utils.paths import get_assets_dir
+    from PySide6.QtGui import QIcon, QFontDatabase
+    
+    assets_dir = get_assets_dir()
+    icon_path = assets_dir / "icons" / "app_icon.png"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
+        
+    font_path = assets_dir / "fonts" / "Roboto-Regular.ttf"
+    if font_path.exists():
+        QFontDatabase.addApplicationFont(str(font_path))
+
     # Load stylesheet
     load_stylesheet(app)
+
+    # Setup translations
+    import json
+    from PySide6.QtCore import QTranslator
+    
+    settings_file = Path("settings.json")
+    language = "en"
+    if settings_file.exists():
+        try:
+            with open(settings_file, encoding="utf-8") as f:
+                data = json.load(f)
+                language = data.get("language", "en")
+        except Exception:
+            pass
+
+    translator = QTranslator()
+    i18n_path = get_app_dir() / "src" / "snapreel" / "i18n"
+    if language == "ru":
+        qm_path = i18n_path / "ru_RU.qm"
+        if qm_path.exists():
+            translator.load(str(qm_path))
+            app.installTranslator(translator)
+    else:
+        qm_path = i18n_path / "en_US.qm"
+        if qm_path.exists():
+            translator.load(str(qm_path))
+            app.installTranslator(translator)
 
     # Load config
     config = AppConfig()
