@@ -1,78 +1,62 @@
 # SnapReel 🎬
 
-SnapReel is a fully automated, local-first application for generating short-form videos (Reels, TikToks, Shorts) from a simple text prompt. It orchestrates a pipeline of local AI models to write scripts, generate voiceovers, create visuals, and assemble everything into a final polished video with subtitles.
+SnapReel is a fully automated, local-first application for generating short-form videos (Reels, TikToks, Shorts) and high-quality images directly from your computer. It intelligently orchestrates a pipeline of local AI models to write scripts, generate voiceovers, create dynamic visuals, and assemble everything into a final polished video with subtitles. 
+
+Everything runs completely locally (except for TTS) and keeps your data private.
 
 ## ✨ Features
-- **Local Script Generation**: Uses `llama-cpp-python` (e.g. Qwen 2.5) to write structured scenes and narration.
-- **Dynamic Voiceovers**: Uses `edge-tts` to generate high-quality text-to-speech.
-- **Visuals & Animations**: Uses `diffusers` (SDXL Turbo) for fast image generation and `FFmpeg` for Ken Burns zoom effects.
-- **Automatic Subtitles**: Uses `faster-whisper` for precise transcription and `FFmpeg` for burning stylized ASS subtitles.
-- **Modern Qt UI**: User-friendly PySide6 interface with dark theme, progress tracking, and i18n support.
-- **Local & Private**: All heavy lifting (except TTS) happens directly on your machine.
 
-## 🚀 Installation
+- **Video Factory**: Enter a topic, and SnapReel will write a script using local LLMs (like Qwen 2.5), generate an edge-tts voiceover, create visuals, add subtitles, and stitch it all together.
+- **Image Studio**: A standalone workspace for generating images and editing with IP-Adapter/ControlNet. Supports Diffusers and ComfyUI backends.
+- **AI Video Clips**: Generate actual video clips (e.g., LTX-Video, Wan 2.1) using the headless ComfyUI engine, or fall back to static images with Ken Burns zoom effects.
+- **Hardware Auto-Tuning**: Built-in hardware profiler automatically detects your CPU, RAM, and GPU/VRAM to apply memory optimizations (like CPU offloading and xformers) for machines with less than 8GB of VRAM.
+- **Modern UI**: A user-friendly PySide6 interface with a dark theme, progress dashboard, and a settings panel for model management.
+
+## 🚀 How to Download and Run
+
+For Windows users, getting started is extremely easy. You do not need to install Python or know how to use the command line.
+
+1. Go to the [Releases](https://github.com/Rolo909/SnapReel/releases) page.
+2. Download the latest `SnapReel-Windows-Portable.zip`.
+3. Extract the ZIP file to a folder on your computer (for example, `C:\SnapReel`).
+4. Double-click **`SnapReel.exe`** to launch the application.
+
+*Note: On your first launch, the built-in Setup Wizard will automatically detect missing models (like your local LLM, diffusion models, and whisper) and download them for you.*
+
+## 💻 Running from Source
+
+If you want to modify the code or run SnapReel from source, follow these steps:
 
 ### Prerequisites
-- **Python 3.10 - 3.12**
-- **C++ Build Tools** (Required on Windows for compiling `llama-cpp-python`)
-- **FFmpeg** installed and added to your system `PATH`.
+- Python 3.10 - 3.14
+- C++ Build Tools (required on Windows to compile `llama-cpp-python`)
+- [FFmpeg](https://ffmpeg.org/) installed and added to your system `PATH`
 
 ### Setup
-We recommend using [uv](https://github.com/astral-sh/uv) or `pip` to install dependencies.
+We recommend using [uv](https://github.com/astral-sh/uv) or standard `pip`:
 
 ```bash
 # Clone the repository
 git clone https://github.com/Rolo909/SnapReel.git
 cd SnapReel
 
-# Create a virtual environment and install dependencies
+# Install dependencies (consider using a virtual environment)
 pip install -e .
 ```
 
-## 🧠 Model Configuration
-
-SnapReel requires several AI models to function. When you first launch the application, the built-in **Model Setup Wizard** will automatically detect missing models and offer to download them to the `models/` directory.
-
-Models used:
-- **LLM**: `Qwen2.5-7B-Instruct-Q4_K_M.gguf` (Placed in `models/llm/`)
-- **Whisper**: `large-v3` (Downloaded automatically by faster-whisper)
-- **Diffusion**: `stabilityai/sdxl-turbo` (Downloaded automatically via HuggingFace hub)
-
-You can customize the models used by editing the `.env` file or tweaking the settings in the UI.
-
-## 🎮 Usage
-
-Launch the application using Python:
-
+### Launch
 ```bash
 python -m snapreel
 ```
 
-1. **New Project**: Click "New Project" in the UI.
-2. **Setup**: Enter your topic (e.g., "Facts about space"), choose a visual style, set the number of scenes, and optionally select background music.
-3. **Generate**: Click "Generate Video".
-4. **Progress**: The dashboard will show you the real-time progress of scenario generation, audio synthesis, visual rendering, and final assembly.
-5. **Result**: Once finished, the video will be saved to the `output/` folder and can be previewed directly in the app.
+## 🛠️ Building the Executable
 
-## 🛠️ Building Executables
-
-You can build a standalone executable for Windows so you don't need to run it via Python.
-
-**For Development (PyInstaller):**
-```bash
-pip install pyinstaller
-python scripts/build_dev.py
-# The output will be in dist/snapreel/snapreel.exe
-```
-
-**For Release (Nuitka):**
+To build the portable ZIP yourself:
 ```bash
 pip install nuitka
 python scripts/build_release.py
-# The output will be in dist/__main__.dist/__main__.exe
 ```
-
-*(Note: The models directory is intentionally excluded from the binary build to keep the executable size manageable. The app will download or expect models next to the executable).*
+This will compile the application and package it into `dist/SnapReel-Windows-Portable.zip`.
 
 ## 📄 License
 MIT License
