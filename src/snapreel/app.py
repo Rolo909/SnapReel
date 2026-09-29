@@ -40,7 +40,7 @@ def run_app() -> int:
     app.setApplicationName("SnapReel")
     app.setApplicationVersion(__version__)
 
-    from snapreel.utils.paths import get_assets_dir
+    from snapreel.utils.paths import get_assets_dir, get_app_dir
     from PySide6.QtGui import QIcon, QFontDatabase
     
     assets_dir = get_assets_dir()

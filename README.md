@@ -40,18 +40,27 @@ If you want to modify the code or run SnapReel from source, follow these steps:
 - [FFmpeg](https://ffmpeg.org/) installed and added to your system `PATH`
 
 **Setup:**
-We recommend using [uv](https://github.com/astral-sh/uv) or standard `pip`:
+We recommend using a virtual environment:
 
 ```bash
 # Clone the repository
 git clone https://github.com/Rolo909/SnapReel.git
 cd SnapReel
 
-# Install dependencies (consider using a virtual environment)
-pip install -e .
+# Create and activate a virtual environment
+# On Windows:
+python -m venv .venv
+.\.venv\Scripts\activate
+# On Linux/macOS:
+# python3 -m venv .venv
+# source .venv/bin/activate
+
+# Install the project and dependencies (including GPU support)
+python -m pip install -e ".[gpu]"
 ```
 
 **Launch:**
+Make sure your virtual environment is activated, then run:
 ```bash
 python -m snapreel
 ```
@@ -103,18 +112,27 @@ SnapReel — это полностью автоматизированное ло
 - Установленный [FFmpeg](https://ffmpeg.org/), добавленный в системный `PATH`
 
 **Установка:**
-Рекомендуется использовать [uv](https://github.com/astral-sh/uv) или стандартный `pip`:
+Крайне рекомендуется использовать виртуальное окружение:
 
 ```bash
 # Клонируем репозиторий
 git clone https://github.com/Rolo909/SnapReel.git
 cd SnapReel
 
-# Устанавливаем зависимости (лучше делать это в виртуальном окружении)
-pip install -e .
+# Создаем и активируем виртуальное окружение
+# На Windows:
+python -m venv .venv
+.\.venv\Scripts\activate
+# На Linux/macOS:
+# python3 -m venv .venv
+# source .venv/bin/activate
+
+# Устанавливаем проект и его зависимости (включая зависимости для GPU)
+python -m pip install -e ".[gpu]"
 ```
 
 **Запуск:**
+Убедитесь, что виртуальное окружение активировано, затем выполните:
 ```bash
 python -m snapreel
 ```

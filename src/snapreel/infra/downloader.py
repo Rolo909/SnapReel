@@ -35,8 +35,8 @@ class ModelSpec:
 MODEL_REGISTRY: dict[str, ModelSpec] = {
     "llm_7b": ModelSpec(
         name="Qwen2.5-7B-Instruct-Q4_K_M",
-        repo_id="Qwen/Qwen2.5-7B-Instruct-GGUF",
-        filename="qwen2.5-7b-instruct-q4_k_m.gguf",
+        repo_id="bartowski/Qwen2.5-7B-Instruct-GGUF",
+        filename="Qwen2.5-7B-Instruct-Q4_K_M.gguf",
         size_gb=4.4,
         target_dir="models/llm",
     ),
