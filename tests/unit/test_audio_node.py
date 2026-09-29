@@ -30,6 +30,11 @@ def mock_ctx(tmp_path):
     ]
     return ctx
 
+@pytest.fixture(autouse=True)
+def mock_ffmpeg():
+    with patch("snapreel.nodes.audio_tts.FFmpegManager"):
+        yield
+
 def test_validate_no_scenes():
     ctx = PipelineContext(voice="ru-RU-DmitryNeural")
     node = AudioNode()
@@ -46,20 +51,15 @@ def test_validate_success(mock_ctx):
     node = AudioNode()
     assert node.validate(mock_ctx) is True
 
-@patch("snapreel.nodes.audio_tts.FFmpegManager")
 @patch("snapreel.nodes.audio_tts.edge_tts.Communicate")
-def test_audio_node_execute(mock_communicate_cls, mock_ffmpeg_cls, mock_ctx):
+def test_audio_node_execute(mock_communicate_cls, mock_ctx):
     mock_communicate = MagicMock()
     mock_communicate.save = AsyncMock()
     mock_communicate_cls.return_value = mock_communicate
 
-    mock_ffmpeg = MagicMock()
-    mock_ffmpeg.run_command = MagicMock()
-    mock_ffmpeg_cls.return_value = mock_ffmpeg
-
     node = AudioNode()
-    # Inject mocked ffmpeg manager
-    node.ffmpeg = mock_ffmpeg
+    # Mock run_command on the auto-mocked ffmpeg manager
+    node.ffmpeg.run_command = MagicMock()
 
     result = node.run(mock_ctx)
     assert result.status.value == "completed"
@@ -67,7 +67,7 @@ def test_audio_node_execute(mock_communicate_cls, mock_ffmpeg_cls, mock_ctx):
     assert mock_communicate_cls.call_count == 2
     assert mock_communicate.save.call_count == 2
 
-    assert mock_ffmpeg.run_command.call_count == 3
+    assert node.ffmpeg.run_command.call_count == 3
 
     # Verify that paths were updated in the context
     assert mock_ctx.narration_audio_path is not None
