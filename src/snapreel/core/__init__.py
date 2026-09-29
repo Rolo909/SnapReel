@@ -14,9 +14,11 @@ from snapreel.core.exceptions import (
     SnapReelError,
 )
 from snapreel.core.node_base import NodeResult, NodeStatus, PipelineNode, ProgressCallback
+from snapreel.core.image_studio import ImageStudioOrchestrator
 
 __all__ = [
     "AppConfig",
+    "ImageStudioOrchestrator",
     "ComfyUIError",
     "DownloadError",
     "FFmpegError",
