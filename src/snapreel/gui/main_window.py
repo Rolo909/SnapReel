@@ -15,6 +15,7 @@ from snapreel.gui.widgets.progress_dashboard import ProgressDashboard
 from snapreel.gui.widgets.project_wizard import ProjectWizard
 from snapreel.gui.widgets.settings_panel import SettingsPanel
 from snapreel.gui.widgets.log_viewer import LogViewer
+from snapreel.gui.widgets.image_studio_widget import ImageStudioWidget
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -66,9 +67,11 @@ class MainWindow(QMainWindow):
 
         self.settings_tab = SettingsPanel()
         self.logs_tab = LogViewer()
+        self.image_studio_tab = ImageStudioWidget()
 
         self.tab_widget.addTab(self.wizard_tab, self.tr("Project"))
         self.tab_widget.addTab(self.pipeline_tab, self.tr("Pipeline"))
+        self.tab_widget.addTab(self.image_studio_tab, self.tr("Image Studio"))
         self.tab_widget.addTab(self.logs_tab, self.tr("Logs"))
         self.tab_widget.addTab(self.settings_tab, self.tr("Settings"))
 
