@@ -21,3 +21,8 @@ output/
 .env
 /rules.md
 /TASK_PLAN.md
+.venv*/
+runtime/
+/settings.json
+.lattice/
+/CLAUDE.md

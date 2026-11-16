@@ -1,3 +1,3 @@
-"""SnapReel — Autonomous Content Factory for vertical video generation."""
+"""SnapReel — local AI studio for images, video and speech."""
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"

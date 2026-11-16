@@ -4,42 +4,53 @@ build-backend = "hatchling.build"
 
 [project]
 name = "snapreel"
-version = "0.1.0"
-description = "Autonomous content factory for Reels / Shorts / TikTok video generation"
+version = "1.0.0"
+description = "Local AI studio: images, video and speech generated on your own computer"
 requires-python = ">=3.11"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "SnapReel Team"}
+    {name = "Rolo909"}
 ]
 
 dependencies = [
     "PySide6>=6.7",
-    "edge-tts>=6.1",
-    "faster-whisper>=1.0",
     "huggingface-hub>=0.24",
     "psutil>=5.9",
-    "pynvml>=11.5",
-    "pydantic>=2.0",
-    "pydantic-settings>=2.0",
-    "structlog>=24.0",
+    "nvidia-ml-py>=12.535",
     "Pillow>=10.0",
     "PyYAML>=6.0",
+    "numpy>=1.26",
+    "av>=12.0",
+    "diffusers>=0.40",
+    "transformers>=4.46",
+    "accelerate>=1.0",
+    "safetensors>=0.4",
+    "sentencepiece>=0.2",
+    "ftfy>=6.1",
+    "protobuf>=4.25",
+    "peft>=0.13",
 ]
 
 [project.optional-dependencies]
-gpu = [
-    "torch>=2.3",
-    "diffusers>=0.30",
-    "transformers>=4.40",
-    "accelerate>=0.30",
+online = [
+    "edge-tts>=6.1",
 ]
+# Exactly one PyTorch flavour is installed: the first-run installer picks it by the graphics card.
+#   uv sync --extra cu130 --extra online   NVIDIA graphics (Windows, Linux)
+#   uv sync --extra cpu --extra online     everything else (and macOS, where it uses Apple GPUs)
+cpu = [
+    "torch>=2.5",
+]
+cu130 = [
+    "torch>=2.5",
+]
+
+[dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-qt>=4.3",
-    "pytest-asyncio>=0.23",
     "ruff>=0.5",
-    "mypy>=1.10",
 ]
 
 [project.scripts]
@@ -48,28 +59,49 @@ snapreel = "snapreel.__main__:main"
 [project.gui-scripts]
 snapreel-gui = "snapreel.__main__:main"
 
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "cu130" }]]
+
+# macOS takes torch from PyPI (it already includes Apple GPU support).
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
+    { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/snapreel"]
+# Bundled data that is not Python code.
+artifacts = ["src/snapreel/data/*.yaml", "src/snapreel/assets/**"]
 
 [tool.ruff]
 target-version = "py311"
-line-length = 100
+line-length = 110
 src = ["src"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "SIM", "TCH", "RUF"]
-ignore = ["ANN101", "ANN102"]
+select = ["E", "F", "W", "I", "B", "BLE", "UP", "SIM", "RUF"]
+# RUF001-003: Cyrillic text in strings is intentional.
+# SIM105/SIM108/SIM905: explicit forms are kept where they read better.
+ignore = ["RUF001", "RUF002", "RUF003", "SIM105", "SIM108", "SIM905"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/snapreel/i18n/ru.py" = ["E501"]  # translations read best one per line
 
 [tool.ruff.lint.isort]
 known-first-party = ["snapreel"]
 
-[tool.mypy]
-python_version = "3.11"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-mypy_path = "src"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+addopts = "--tb=short"
+pythonpath = ["src"]

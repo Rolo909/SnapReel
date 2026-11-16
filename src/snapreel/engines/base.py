@@ -1,131 +1,170 @@
-"""Base classes and model registry for generation engines."""
+"""Engine contract shared by every generation backend."""
 
 from __future__ import annotations
 
+import gc
+import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
-import yaml
+from snapreel.core import catalog
+from snapreel.core.advisor import Plan
+from snapreel.core.catalog import ModelSpec
+from snapreel.core.jobs import Job, Result
 
-from snapreel.infra.hardware import ExecutionProfile
+if TYPE_CHECKING:
+    from snapreel.core.settings import Settings
+    from snapreel.core.store import ModelStore
 
-
-@dataclass
-class ModelConfig:
-    """Configuration for a specific model."""
-
-    id: str
-    name: str
-    engine: str
-    type: str
-    profiles: dict[str, dict[str, Any]]
-
-    def get_profile_settings(self, profile_name: str) -> dict[str, Any]:
-        """Get the specific settings for a given execution profile.
-        
-        Args:
-            profile_name: The name of the profile (e.g., 'high', 'medium').
-            
-        Returns:
-            A dictionary containing the profile-specific settings.
-        """
-        return self.profiles.get(profile_name, {})
+log = logging.getLogger(__name__)
 
 
-class ModelRegistry:
-    """Registry for loading and querying model configurations."""
-
-    def __init__(self, registry_path: Path | str = "models_registry.yaml") -> None:
-        """Initialize the model registry.
-        
-        Args:
-            registry_path: Path to the YAML registry file.
-        """
-        self.registry_path = Path(registry_path)
-        self.models: dict[str, ModelConfig] = {}
-        self._load_registry()
-
-    def _load_registry(self) -> None:
-        if not self.registry_path.exists():
-            return
-            
-        with open(self.registry_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-            
-        if not data or "models" not in data:
-            return
-            
-        for model_data in data["models"]:
-            config = ModelConfig(
-                id=model_data["id"],
-                name=model_data.get("name", model_data["id"]),
-                engine=model_data["engine"],
-                type=model_data.get("type", "image"),
-                profiles=model_data.get("profiles", {}),
-            )
-            self.models[config.id] = config
-
-    def get_model(self, model_id: str) -> ModelConfig | None:
-        """Get a model's configuration by ID."""
-        return self.models.get(model_id)
-        
-    def list_models(self, engine: str | None = None, model_type: str | None = None) -> list[ModelConfig]:
-        """List all models, optionally filtered by engine and type."""
-        result = list(self.models.values())
-        if engine:
-            result = [m for m in result if m.engine == engine]
-        if model_type:
-            result = [m for m in result if m.type == model_type]
-        return result
+class Cancelled(Exception):
+    """Raised inside an engine when the user cancels the running job."""
 
 
-class ImageGenerationEngine(ABC):
-    """Abstract base class for all image generation engines."""
+class EngineError(Exception):
+    """A failure with a message that is safe and useful to show to the user."""
 
-    def __init__(self, profile: ExecutionProfile, model_config: ModelConfig) -> None:
-        """Initialize the engine.
-        
-        Args:
-            profile: Hardware execution profile (high, medium, etc.)
-            model_config: Specific model configuration from registry
-        """
-        self.profile = profile
-        self.model_config = model_config
-        self.settings = model_config.get_profile_settings(profile.name)
-        
-    @abstractmethod
-    def load_model(self) -> None:
-        """Load the model into memory. Implementations should apply hardware optimizations here."""
-        pass
+    def __init__(self, code: str, detail: str = "") -> None:
+        super().__init__(detail or code)
+        self.code = code
+        self.detail = detail
+
+
+class Context:
+    """What an engine may use while it works: progress reporting and cancellation."""
+
+    def __init__(
+        self, settings: Settings, store: ModelStore,
+        progress: Callable[[float, str], None], cancelled: Callable[[], bool],
+    ) -> None:
+        self.settings = settings
+        self.store = store
+        self._progress = progress
+        self._cancelled = cancelled
+
+    def progress(self, fraction: float, stage: str = "") -> None:
+        self._progress(max(0.0, min(1.0, fraction)), stage)
+
+    @property
+    def cancelled(self) -> bool:
+        return self._cancelled()
+
+    def check(self) -> None:
+        if self._cancelled():
+            raise Cancelled
+
+
+class Engine(ABC):
+    """Loads one model and produces results. One instance per loaded model."""
+
+    def __init__(self, spec: ModelSpec, plan: Plan) -> None:
+        self.spec = spec
+        self.plan = plan
 
     @abstractmethod
-    def generate(
-        self,
-        prompt: str,
-        negative_prompt: str = "",
-        width: int = 1024,
-        height: int = 1024,
-        steps: int = 20,
-        **kwargs: Any
-    ) -> Path:
-        """Generate an image based on the prompt.
-        
-        Args:
-            prompt: Positive text prompt.
-            negative_prompt: Negative text prompt.
-            width: Output width in pixels.
-            height: Output height in pixels.
-            steps: Number of inference steps.
-            kwargs: Engine-specific additional arguments.
-            
-        Returns:
-            Path to the saved image file.
-        """
-        pass
-        
+    def load(self, ctx: Context) -> None:
+        """Bring the model into memory according to ``self.plan``."""
+
     @abstractmethod
-    def unload_model(self) -> None:
-        """Unload the model to free VRAM/RAM."""
+    def generate(self, job: Job, ctx: Context) -> list[Result]:
+        """Run one job and return the saved artefacts."""
+
+    def unload(self) -> None:
+        """Release all memory held by the model."""
+        free_memory()
+
+    def model_path(self, ctx: Context) -> Path:
+        path = ctx.store.location(self.spec)
+        if path is None or not path.exists():
+            raise EngineError("not_installed", self.spec.name)
+        return path
+
+
+def quiet_libraries() -> None:
+    """Silence console progress bars and chatter of diffusers / transformers (both have own handlers)."""
+    for name in ("diffusers", "transformers"):
+        try:
+            module = __import__(f"{name}.utils.logging", fromlist=["logging"])
+            module.set_verbosity_error()
+            module.disable_progress_bar()
+        except (ImportError, AttributeError):
+            continue
+
+
+def free_memory() -> None:
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception:  # noqa: BLE001 - best effort; torch may be absent or mid-teardown
         pass
+
+
+def is_oom(exc: BaseException) -> bool:
+    name = exc.__class__.__name__
+    text = str(exc).lower()
+    return "OutOfMemory" in name or "out of memory" in text or "not enough memory" in text
+
+
+EngineFactory = Callable[[ModelSpec, Plan], Engine]
+_REGISTRY: dict[str, EngineFactory] = {}
+
+
+def register_engine(name: str, factory: EngineFactory) -> None:
+    """Make ``name`` usable as ``ModelSpec.engine``. Plugins call this on import."""
+    if not name.isidentifier():
+        raise ValueError(f"engine name must be an identifier: {name!r}")
+    _REGISTRY[name] = factory
+    catalog.ENGINES.add(name)
+
+
+def registered_engines() -> list[str]:
+    return sorted(_REGISTRY)
+
+
+def create_engine(spec: ModelSpec, plan: Plan) -> Engine:
+    factory = _REGISTRY.get(spec.engine)
+    if factory is None:
+        raise EngineError("unsupported", spec.engine)
+    return factory(spec, plan)
+
+
+# Built-in engines. Factories import lazily: torch and friends load only when a model is used.
+def _diffusers(spec: ModelSpec, plan: Plan) -> Engine:
+    if spec.kind == "video":
+        from snapreel.engines.diffusers_video import DiffusersVideoEngine
+
+        return DiffusersVideoEngine(spec, plan)
+    from snapreel.engines.diffusers_image import DiffusersImageEngine
+
+    return DiffusersImageEngine(spec, plan)
+
+
+def _silero(spec: ModelSpec, plan: Plan) -> Engine:
+    from snapreel.engines.tts import SileroEngine
+
+    return SileroEngine(spec, plan)
+
+
+def _transformers_tts(spec: ModelSpec, plan: Plan) -> Engine:
+    from snapreel.engines.tts import TransformersTtsEngine
+
+    return TransformersTtsEngine(spec, plan)
+
+
+def _edge(spec: ModelSpec, plan: Plan) -> Engine:
+    from snapreel.engines.tts import EdgeEngine
+
+    return EdgeEngine(spec, plan)
+
+
+for _name, _factory in (("diffusers", _diffusers), ("silero", _silero),
+                        ("transformers_tts", _transformers_tts), ("edge", _edge)):
+    register_engine(_name, _factory)
