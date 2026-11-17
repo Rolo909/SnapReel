@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from snapreel.engines import media
+from tvorka.engines import media
 
 
 def tone(seconds: float = 0.5, rate: int = 24000) -> np.ndarray:

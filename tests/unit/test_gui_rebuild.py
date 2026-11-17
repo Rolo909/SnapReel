@@ -10,9 +10,9 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("pytestqt")
 
-from snapreel.app import open_window
-from snapreel.core.settings import Settings
-from snapreel.gui.services import Services
+from tvorka.app import open_window
+from tvorka.core.settings import Settings
+from tvorka.gui.services import Services
 
 
 def test_unsent_input_survives_rebuild_and_restart(tmp_path: Path, qapp) -> None:
@@ -39,7 +39,7 @@ def test_unsent_input_survives_rebuild_and_restart(tmp_path: Path, qapp) -> None
 def test_window_with_toasts_closes_cleanly(qapp) -> None:
     from PySide6.QtWidgets import QWidget
 
-    from snapreel.gui.widgets.feedback import ToastHost
+    from tvorka.gui.widgets.feedback import ToastHost
 
     errors: list[BaseException] = []
     import sys

@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from snapreel.core import advisor, hardware
-from snapreel.core.catalog import Catalog
-from snapreel.core.hardware import Adapter, GpuInfo, Hardware, TorchBuild
+from tvorka.core import advisor, hardware
+from tvorka.core.catalog import Catalog
+from tvorka.core.hardware import Adapter, GpuInfo, Hardware, TorchBuild
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -148,12 +148,12 @@ def test_every_flavor_is_a_pyproject_extra() -> None:
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows installer")
 def test_installer_picks_the_same_build(tmp_path: Path) -> None:
     """The installer (PowerShell) and the app (Python) read one table: they must agree."""
-    app = tmp_path / "SnapReel" / "app"
+    app = tmp_path / "Tvorka" / "app"
     (app / "setup").mkdir(parents=True)
-    (app / "src" / "snapreel" / "data").mkdir(parents=True)
+    (app / "src" / "tvorka" / "data").mkdir(parents=True)
     shutil.copy(ROOT / "packaging" / "windows" / "launcher.ps1", app / "setup")
-    shutil.copy(ROOT / "src" / "snapreel" / "data" / "gpu_support.json", app / "src" / "snapreel" / "data")
-    shutil.copy(ROOT / "src" / "snapreel" / "__init__.py", app / "src" / "snapreel")
+    shutil.copy(ROOT / "src" / "tvorka" / "data" / "gpu_support.json", app / "src" / "tvorka" / "data")
+    shutil.copy(ROOT / "src" / "tvorka" / "__init__.py", app / "src" / "tvorka")
     def detect(simulate: str) -> dict:
         command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                    str(app / "setup" / "launcher.ps1"), "-DetectOnly", "-SimulateGpu", simulate]

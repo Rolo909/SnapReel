@@ -8,13 +8,13 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("pytestqt")
 
-from snapreel.core.hardware import GpuInfo, Hardware, TorchBuild
-from snapreel.core.settings import DEFAULT_CATALOG_URL, Settings
-from snapreel.gui import theme
-from snapreel.gui.pages import settings as settings_module
-from snapreel.gui.pages.settings import SettingsPage
-from snapreel.gui.services import Services
-from snapreel.i18n import set_language
+from tvorka.core.hardware import GpuInfo, Hardware, TorchBuild
+from tvorka.core.settings import DEFAULT_CATALOG_URL, Settings
+from tvorka.gui import theme
+from tvorka.gui.pages import settings as settings_module
+from tvorka.gui.pages.settings import SettingsPage
+from tvorka.gui.services import Services
+from tvorka.i18n import set_language
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def test_amd_without_rocm_build_offers_setup(page: SettingsPage, monkeypatch) ->
     assert not page.install_button.isHidden() and "RX 7800 XT" in page.install_button.text()
     assert not page.install_button.isEnabled()  # from source: the command is shown instead
     assert "--python 3.13 --extra rocm-gfx110x" in page.install_status.text()
-    monkeypatch.setattr(settings_module.hardware, "release_home", lambda: Path("C:/SnapReel"))
+    monkeypatch.setattr(settings_module.hardware, "release_home", lambda: Path("C:/Tvorka"))
     page._show_hardware(hw)
     assert page.install_button.isEnabled()
     rocm = Hardware("Windows 11", "Test CPU", 6, 12, 32.0, 20.0, 8.0, (rx,),

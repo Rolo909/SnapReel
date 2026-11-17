@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from snapreel.core.hub import plan_files
+from tvorka.core.hub import plan_files
 
 GB = 1024**3
 SMALL = 2048

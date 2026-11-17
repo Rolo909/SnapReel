@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from snapreel.core.advisor import Plan
-from snapreel.core.catalog import Catalog, ModelSpec
-from snapreel.engines import base
-from snapreel.engines.plugins import load_plugins
+from tvorka.core.advisor import Plan
+from tvorka.core.catalog import Catalog, ModelSpec
+from tvorka.engines import base
+from tvorka.engines.plugins import load_plugins
 
 PLUGIN = textwrap.dedent('''
-    from snapreel.engines.base import Engine, register_engine
+    from tvorka.engines.base import Engine, register_engine
 
     class EchoEngine(Engine):
         def load(self, ctx):
@@ -56,3 +56,12 @@ def test_plugin_engine_can_be_used_by_user_models(tmp_path: Path) -> None:
     load_plugins(tmp_path)
     Catalog().add_user(ModelSpec(id="me/echo", name="Echo", kind="speech", engine="echo_test"))
     assert Catalog().get("me/echo") is not None
+
+
+
+def test_plugin_written_for_snapreel_still_loads(tmp_path: Path) -> None:
+    """Up to 1.0 the package was called ``snapreel``; plugins from then keep working."""
+    old = PLUGIN.replace("from tvorka.", "from snapreel.").replace("echo_test", "echo_snapreel")
+    (tmp_path / "old_style.py").write_text(old, encoding="utf-8")
+    info = load_plugins(tmp_path)
+    assert info[0].error == "" and info[0].engines == ["echo_snapreel"]

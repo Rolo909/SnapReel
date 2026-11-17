@@ -2,14 +2,14 @@
 
     python scripts/build_release.py [--uv path\\to\\uv.exe] [--out dist]
 
-Layout of the archive (everything inside one "SnapReel" folder):
+Layout of the archive (everything inside one "Tvorka" folder):
 
-    SnapReel/
-      SnapReel.cmd            double-click to start (installs on the first start)
+    Tvorka/
+      Tvorka.cmd            double-click to start (installs on the first start)
       Как установить.txt      short instructions, Russian and English
       app/                    the application: pyproject.toml, uv.lock, src/, LICENSE, README
         setup/launcher.ps1    first-run installer and launcher
-        setup/uv.exe          downloads Python and the components into SnapReel/runtime
+        setup/uv.exe          downloads Python and the components into Tvorka/runtime
 """
 
 from __future__ import annotations
@@ -27,10 +27,10 @@ SKIP = {"__pycache__", ".pytest_cache", ".ruff_cache"}
 
 
 def version() -> str:
-    text = (ROOT / "src" / "snapreel" / "__init__.py").read_text(encoding="utf-8")
+    text = (ROOT / "src" / "tvorka" / "__init__.py").read_text(encoding="utf-8")
     match = re.search(r'__version__\s*=\s*"([^"]+)"', text)
     if not match:
-        raise SystemExit("version not found in src/snapreel/__init__.py")
+        raise SystemExit("version not found in src/tvorka/__init__.py")
     return match.group(1)
 
 
@@ -54,10 +54,10 @@ def find_uv(explicit: str | None) -> Path:
 
 
 def build(out: Path, uv: Path) -> Path:
-    name = f"SnapReel-{version()}-windows"
+    name = f"Tvorka-{version()}-windows"
     stage = out / name
     shutil.rmtree(stage, ignore_errors=True)
-    root = stage / "SnapReel"
+    root = stage / "Tvorka"
     app = root / "app"
     setup = app / "setup"
     setup.mkdir(parents=True)
@@ -70,7 +70,7 @@ def build(out: Path, uv: Path) -> Path:
     packaging = ROOT / "packaging" / "windows"
     shutil.copy2(packaging / "launcher.ps1", setup / "launcher.ps1")
     shutil.copy2(uv, setup / "uv.exe")
-    shutil.copy2(packaging / "SnapReel.cmd", root / "SnapReel.cmd")
+    shutil.copy2(packaging / "Tvorka.cmd", root / "Tvorka.cmd")
     shutil.copy2(packaging / "install.txt", root / "Как установить.txt")
 
     archive = out / f"{name}.zip"

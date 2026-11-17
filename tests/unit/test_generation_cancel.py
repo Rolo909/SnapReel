@@ -8,11 +8,11 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from snapreel.core.catalog import Catalog
-from snapreel.core.jobs import History, Job
-from snapreel.core.settings import Settings
-from snapreel.core.store import ModelStore
-from snapreel.workers.generation import GenerationWorker
+from tvorka.core.catalog import Catalog
+from tvorka.core.jobs import History, Job
+from tvorka.core.settings import Settings
+from tvorka.core.store import ModelStore
+from tvorka.workers.generation import GenerationWorker
 
 
 @pytest.fixture

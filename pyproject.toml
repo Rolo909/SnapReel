@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "snapreel"
-version = "1.0.0"
+name = "tvorka"
+version = "1.1.0"
 description = "Local AI studio: images, video and speech generated on your own computer"
 requires-python = ">=3.11"
 readme = "README.md"
@@ -37,7 +37,7 @@ online = [
     "edge-tts>=6.1",
 ]
 # Exactly one PyTorch flavour is installed: the first-run installer picks it by the graphics card
-# (the table is src/snapreel/data/gpu_support.json).
+# (the table is src/tvorka/data/gpu_support.json).
 #   uv sync --extra cu130 --extra online                      NVIDIA graphics (Windows, Linux)
 #   uv sync --python 3.13 --extra rocm-gfx110x --extra online AMD Radeon RX 7000 and others, see below
 #   uv sync --extra xpu --extra online                        Intel Arc (discrete and Core Ultra)
@@ -98,10 +98,10 @@ dev = [
 ]
 
 [project.scripts]
-snapreel = "snapreel.__main__:main"
+tvorka = "tvorka.__main__:main"
 
 [project.gui-scripts]
-snapreel-gui = "snapreel.__main__:main"
+tvorka-gui = "tvorka.__main__:main"
 
 [tool.uv]
 conflicts = [[
@@ -203,9 +203,9 @@ url = "https://repo.amd.com/rocm/whl/gfx1152/"
 explicit = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/snapreel"]
+packages = ["src/tvorka"]
 # Bundled data that is not Python code.
-artifacts = ["src/snapreel/data/*.yaml", "src/snapreel/data/*.json", "src/snapreel/assets/**"]
+artifacts = ["src/tvorka/data/*.yaml", "src/tvorka/data/*.json", "src/tvorka/assets/**"]
 
 [tool.ruff]
 target-version = "py311"
@@ -219,10 +219,10 @@ select = ["E", "F", "W", "I", "B", "BLE", "UP", "SIM", "RUF"]
 ignore = ["RUF001", "RUF002", "RUF003", "SIM105", "SIM108", "SIM905"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/snapreel/i18n/ru.py" = ["E501"]  # translations read best one per line
+"src/tvorka/i18n/ru.py" = ["E501"]  # translations read best one per line
 
 [tool.ruff.lint.isort]
-known-first-party = ["snapreel"]
+known-first-party = ["tvorka"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

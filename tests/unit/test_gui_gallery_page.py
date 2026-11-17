@@ -10,12 +10,12 @@ pytest.importorskip("pytestqt")
 
 from PIL import Image
 
-from snapreel.core.jobs import Job, Result
-from snapreel.core.settings import Settings
-from snapreel.gui import theme
-from snapreel.gui.pages.gallery import GalleryPage
-from snapreel.gui.services import Services
-from snapreel.i18n import set_language
+from tvorka.core.jobs import Job, Result
+from tvorka.core.settings import Settings
+from tvorka.gui import theme
+from tvorka.gui.pages.gallery import GalleryPage
+from tvorka.gui.services import Services
+from tvorka.i18n import set_language
 
 
 @pytest.fixture

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from snapreel.core.hub import HubError, is_network_error
-from snapreel.workers import download_proc
-from snapreel.workers.download_proc import DownloadError, check_disk, error_code
+from tvorka.core.hub import HubError, is_network_error
+from tvorka.workers import download_proc
+from tvorka.workers.download_proc import DownloadError, check_disk, error_code
 
 
 class GatedRepoError(Exception):
@@ -51,7 +51,7 @@ def test_check_disk(tmp_path: Path) -> None:
 
 
 def test_present_bytes_counts_partial_and_complete(tmp_path: Path) -> None:
-    from snapreel.core.hub import DownloadPlan
+    from tvorka.core.hub import DownloadPlan
 
     repo = tmp_path / "models--a--b"
     (repo / "snapshots" / "rev" / "unet").mkdir(parents=True)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from snapreel.engines import textnorm
+from tvorka.engines import textnorm
 
 
 @pytest.mark.parametrize(("value", "words"), [

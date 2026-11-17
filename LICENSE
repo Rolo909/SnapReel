@@ -20,6 +20,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Model weights downloaded by SnapReel are NOT covered by this license: each model
+Model weights downloaded by Tvorka are NOT covered by this license: each model
 has its own license set by its authors (shown on the model's card in the app).
 Real-ESRGAN (architecture and x4plus weights): BSD-3-Clause, Xintao Wang.

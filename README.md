@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src/snapreel/assets/icons/app_icon.png" width="96" alt="SnapReel">
+  <img src="src/tvorka/assets/icons/app_icon.png" width="96" alt="Tvorka">
 </p>
 
-<h1 align="center">SnapReel</h1>
+<h1 align="center">Tvorka</h1>
 
 <p align="center">
   Локальная ИИ-студия: изображения, видео и озвучка прямо на вашем компьютере.<br>
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/image.png" width="860" alt="SnapReel — изображения">
+  <img src="docs/screenshots/image.png" width="860" alt="Tvorka — изображения">
 </p>
 
 ---
@@ -23,15 +23,15 @@
 
 ## Русский
 
-SnapReel запускает открытые ИИ-модели у вас на компьютере. Интернет нужен только чтобы один раз скачать
+Tvorka запускает открытые ИИ-модели у вас на компьютере. Интернет нужен только чтобы один раз скачать
 программу и модели: ваши идеи, тексты и результаты никуда не отправляются. Подписок и лимитов нет.
 
 - **Изображения** по описанию или по картинке-референсу (IP-Adapter), с LoRA. Размер до 4K и больше:
-  если модель не умеет такой размер, SnapReel создаст картинку поменьше и аккуратно увеличит её (Real-ESRGAN).
+  если модель не умеет такой размер, Tvorka создаст картинку поменьше и аккуратно увеличит её (Real-ESRGAN).
 - **Видео**: короткие ролики по описанию или «оживление» картинки (CogVideoX, Wan, LTX-Video).
 - **Озвучка**: естественная речь из текста на русском и английском (Silero, MMS, Bark). Числа, даты и
   сокращения читаются словами.
-- **Подбор под ваш компьютер.** SnapReel заранее говорит, как модель пойдёт на вашей видеокарте
+- **Подбор под ваш компьютер.** Tvorka заранее говорит, как модель пойдёт на вашей видеокарте
   («отлично», «медленно», «не хватит памяти»), и сам выбирает режим: целиком в видеопамяти, с выгрузкой
   в оперативную память или по частям. Модели, которые больше видеопамяти, всё равно запускаются.
 - **Каталог моделей** с поиском по Hugging Face, докачкой после обрыва и проверкой места на диске.
@@ -47,27 +47,31 @@ SnapReel запускает открытые ИИ-модели у вас на к
 
 Ничего заранее ставить не нужно — ни Python, ни драйверы CUDA, ни командную строку.
 
-1. Скачайте архив `SnapReel-<версия>-windows.zip` со страницы
-   [Releases](https://github.com/Rolo909/SnapReel/releases) и **распакуйте** его, например в `D:\SnapReel`.
-2. Дважды щёлкните **`SnapReel.cmd`**.
+1. Скачайте архив `Tvorka-<версия>-windows.zip` со страницы
+   [Releases](https://github.com/Rolo909/Tvorka/releases) и **распакуйте** его, например в `D:\Tvorka`.
+2. Дважды щёлкните **`Tvorka.cmd`**.
    Если Windows покажет «Windows защитила ваш компьютер» — нажмите **«Подробнее» → «Выполнить в любом случае»**.
    Это обычное предупреждение для бесплатных программ без платной подписи.
-3. Откроется окно «Подготовка к первому запуску». SnapReel сам определит видеокарту и скачает нужное:
+3. Откроется окно «Подготовка к первому запуску». Tvorka сама определит видеокарту и скачает нужное:
    около 3 ГБ для NVIDIA, 2,5 ГБ для AMD Radeon, 2 ГБ для Intel Arc, 1 ГБ для остальных компьютеров.
-   Если загрузка прервётся — запустите `SnapReel.cmd` ещё раз: уже скачанные файлы сохранятся.
-   Если видеокарта не запустится (обычно из-за старого драйвера), SnapReel сам поставит версию
+   Если загрузка прервётся — запустите `Tvorka.cmd` ещё раз: уже скачанные файлы сохранятся.
+   Если видеокарта не запустится (обычно из-за старого драйвера), Tvorka сама поставит версию
    для процессора и подскажет, что обновить.
-4. Готово: на рабочем столе и в «Пуске» появится ярлык. При первом запуске SnapReel предложит
+4. Готово: на рабочем столе и в «Пуске» появится ярлык. При первом запуске Tvorka предложит
    по одной модели каждого вида, которые лучше всего подходят вашему компьютеру.
 
-Всё ставится внутрь папки SnapReel, системный Python не затрагивается. **Удаление** — удалите папку,
-ярлыки и, при желании, настройки в `%APPDATA%\SnapReel`. **Обновление** — распакуйте новую версию поверх
-старой: модели и работы останутся. О новой версии SnapReel сообщит сам (можно отключить в «Настройках»).
+Всё ставится внутрь папки Tvorka, системный Python не затрагивается. **Удаление** — удалите папку,
+ярлыки и, при желании, настройки в `%APPDATA%\Tvorka`. **Обновление** — распакуйте новую версию поверх
+старой: модели и работы останутся. О новой версии Tvorka сообщит сама (можно отключить в «Настройках»).
+
+**Был SnapReel?** Tvorka — его новое название (с версии 1.1). Распакуйте Tvorka в любое место и запустите:
+настройки, история и плагины перенесутся сами, а скачанные модели и работы Tvorka возьмёт из старой папки
+SnapReel — не удаляйте её. Ярлыки SnapReel заменятся на ярлыки Tvorka.
 
 ### Какая модель подойдёт моему компьютеру
 
-Оценка SnapReel для картинки 1024×1024 (у SD Turbo и DreamShaper — их родной 512/768) и стандартной длины
-ролика. «Медленно» обычно значит, что модель не помещается в видеопамять целиком и SnapReel подгружает её
+Оценка Tvorka для картинки 1024×1024 (у SD Turbo и DreamShaper — их родной 512/768) и стандартной длины
+ролика. «Медленно» обычно значит, что модель не помещается в видеопамять целиком и Tvorka подгружает её
 по частям.
 
 | Модель | Скачать | Без видеокарты (16 ГБ ОЗУ) | 6 ГБ | 8 ГБ | 12 ГБ | 16 ГБ | 24 ГБ |
@@ -103,25 +107,25 @@ SnapReel запускает открытые ИИ-модели у вас на к
 
 Остальные (Radeon RX 5000 и старше, Intel Iris Xe / UHD) не поддерживаются — модели работают на процессоре.
 Поддержка AMD и Intel проверена на имитации этих видеокарт: определение, установка компонентов и
-переход на процессор при старом драйвере. **На настоящих Radeon и Arc SnapReel пока не запускали** —
+переход на процессор при старом драйвере. **На настоящих Radeon и Arc Tvorka пока не запускали** —
 если у вас такая видеокарта, напишите, как прошло.
 
 ### Где лежат файлы
 
 | Что | Где |
 |---|---|
-| Модели | `SnapReel\models` (рядом с `SnapReel.cmd`; можно сменить в «Настройках») |
-| Результаты | `SnapReel\output` |
-| Настройки, история, журналы, плагины | `%APPDATA%\SnapReel` |
+| Модели | `Tvorka\models` (рядом с `Tvorka.cmd`; можно сменить в «Настройках») |
+| Результаты | `Tvorka\output` |
+| Настройки, история, журналы, плагины | `%APPDATA%\Tvorka` |
 
 ### Частые вопросы
 
 **Генерация идёт очень долго.** Посмотрите оценку под выбором модели. Если там «медленно» — модель
 не помещается в видеопамять; выберите модель полегче (SD Turbo, SDXL Turbo, CogVideoX 2B) или уменьшите размер.
 
-**Есть видеокарта, а SnapReel пишет «процессор».** Обновите драйвер видеокарты (для NVIDIA нужен 580
+**Есть видеокарта, а Tvorka пишет «процессор».** Обновите драйвер видеокарты (для NVIDIA нужен 580
 или новее) и нажмите кнопку в «Настройки → Этот компьютер»: «Установить GPU-версию PyTorch» для NVIDIA
-или «Настроить SnapReel для …» для AMD и Intel.
+или «Настроить Tvorka для …» для AMD и Intel.
 
 **Хочу свою модель.** «Модели → Добавить свою»: поиск по Hugging Face или свой файл `.safetensors` / папка
 diffusers. LoRA добавляются так же. Для моделей, которые встроенные движки не умеют запускать, есть
@@ -135,13 +139,13 @@ diffusers. LoRA добавляются так же. Для моделей, ко�
 Нужен [uv](https://docs.astral.sh/uv/). Python нужной версии uv поставит сам.
 
 ```bash
-git clone https://github.com/Rolo909/SnapReel.git
-cd SnapReel
+git clone https://github.com/Rolo909/Tvorka.git
+cd Tvorka
 uv sync --extra cu130 --extra online   # NVIDIA; без видеокарты: --extra cpu
 # AMD Radeon RX 7000: uv sync --python 3.13 --extra rocm-gfx110x --extra online
 # Intel Arc:          uv sync --extra xpu --extra online
-# (какой extra нужен вашей видеокарте — в src/snapreel/data/gpu_support.json)
-uv run python -m snapreel
+# (какой extra нужен вашей видеокарте — в src/tvorka/data/gpu_support.json)
+uv run python -m tvorka
 ```
 
 Тесты и проверка стиля:
@@ -151,12 +155,12 @@ uv run pytest
 uv run ruff check src tests
 ```
 
-Сборка релизного архива: `uv run python scripts/build_release.py` → `dist/SnapReel-<версия>-windows.zip`.
+Сборка релизного архива: `uv run python scripts/build_release.py` → `dist/Tvorka-<версия>-windows.zip`.
 Устройство проекта: интерфейс (`gui`) → фоновые задачи (`workers`) → движки моделей (`engines`) → ядро (`core`).
 
 ### Лицензии
 
-Код SnapReel распространяется по лицензии [MIT](LICENSE). **На модели она не распространяется**: у каждой
+Код Tvorka распространяется по лицензии [MIT](LICENSE). **На модели она не распространяется**: у каждой
 модели своя лицензия, она показана в каталоге. Некоторые разрешают только некоммерческое использование —
 например Silero (CC BY-NC-SA 4.0), MMS (CC BY-NC 4.0) и SD Turbo / SDXL Turbo (Stability AI Community).
 Перед коммерческим использованием результата проверьте лицензию модели. Real-ESRGAN — BSD-3-Clause.
@@ -171,15 +175,15 @@ uv run ruff check src tests
 
 ## English
 
-SnapReel runs open AI models on your own computer. The internet is only needed once, to download the app
+Tvorka runs open AI models on your own computer. The internet is only needed once, to download the app
 and the models: your ideas, texts and results never leave your machine. No subscriptions, no limits.
 
 - **Images** from a description or a reference picture (IP-Adapter), with LoRA. Up to 4K and beyond:
-  when a model can't render that size, SnapReel renders smaller and upscales carefully (Real-ESRGAN).
+  when a model can't render that size, Tvorka renders smaller and upscales carefully (Real-ESRGAN).
 - **Video**: short clips from a description, or bring a picture to life (CogVideoX, Wan, LTX-Video).
 - **Voice-over**: natural speech from Russian and English text (Silero, MMS, Bark). Numbers, dates and
   abbreviations are read as words.
-- **Fitted to your computer.** SnapReel tells you up front how a model will run on your graphics card
+- **Fitted to your computer.** Tvorka tells you up front how a model will run on your graphics card
   ("great", "slow", "not enough memory") and picks the mode by itself: fully in video memory, offloaded to
   RAM, or streamed piece by piece. Models larger than your video memory still run.
 - **Model catalog** with Hugging Face search, resumable downloads and disk-space checks. Add your own
@@ -187,29 +191,33 @@ and the models: your ideas, texts and results never leave your machine. No subsc
 - Dark and light themes, Russian and English interface (switch in Settings).
 
 <p align="center">
-  <img src="docs/screenshots/models.png" width="860" alt="SnapReel — models">
+  <img src="docs/screenshots/models.png" width="860" alt="Tvorka — models">
 </p>
 
 ### Install (Windows 10/11)
 
 Nothing to install beforehand — no Python, no CUDA, no command line.
 
-1. Download `SnapReel-<version>-windows.zip` from [Releases](https://github.com/Rolo909/SnapReel/releases)
-   and **unpack** it, e.g. to `D:\SnapReel`.
-2. Double-click **`SnapReel.cmd`**.
+1. Download `Tvorka-<version>-windows.zip` from [Releases](https://github.com/Rolo909/Tvorka/releases)
+   and **unpack** it, e.g. to `D:\Tvorka`.
+2. Double-click **`Tvorka.cmd`**.
    If Windows shows "Windows protected your PC", click **More info → Run anyway**. This is a usual
    warning for free programs without a paid signature.
-3. The "Getting ready for the first start" window opens. SnapReel detects your graphics card and downloads
+3. The "Getting ready for the first start" window opens. Tvorka detects your graphics card and downloads
    what it needs: about 3 GB for NVIDIA, 2.5 GB for AMD Radeon, 2 GB for Intel Arc, 1 GB for other computers.
-   If the download is interrupted, start `SnapReel.cmd` again: files already downloaded are kept. If the
-   graphics card does not start (usually an old driver), SnapReel installs the processor version by itself
+   If the download is interrupted, start `Tvorka.cmd` again: files already downloaded are kept. If the
+   graphics card does not start (usually an old driver), Tvorka installs the processor version by itself
    and tells you what to update.
-4. Done: a shortcut appears on the desktop and in the Start menu. On the first start SnapReel suggests one
+4. Done: a shortcut appears on the desktop and in the Start menu. On the first start Tvorka suggests one
    model of each kind that suits your computer best.
 
-Everything goes inside the SnapReel folder; your system Python is not touched. **Remove** — delete the folder,
-the shortcuts and, optionally, the settings in `%APPDATA%\SnapReel`. **Update** — unpack the new version over
-the old one: models and results stay. SnapReel tells you when a new version is out (can be turned off in Settings).
+Everything goes inside the Tvorka folder; your system Python is not touched. **Remove** — delete the folder,
+the shortcuts and, optionally, the settings in `%APPDATA%\Tvorka`. **Update** — unpack the new version over
+the old one: models and results stay. Tvorka tells you when a new version is out (can be turned off in Settings).
+
+**Had SnapReel?** Tvorka is its new name (since 1.1). Unpack Tvorka anywhere and start it: settings, history
+and plugins move over by themselves, and Tvorka keeps using the models and works in the old SnapReel folder —
+do not delete it. The SnapReel shortcuts are replaced by Tvorka ones.
 
 ### Which model suits my computer
 
@@ -217,7 +225,7 @@ The verdicts are those of the [table above](#какая-модель-подой�
 *отлично* = great, *хорошо* = good, *медленно* = slow, *очень медленно* = very slow, *нет* = won't run.
 Estimated for a 1024×1024 picture (SD Turbo and DreamShaper at their native 512/768) and the default clip
 length; 6–8 GB cards with 16 GB RAM, 12–16 GB with 32 GB, 24 GB with 64 GB. "Slow" usually means the model
-doesn't fit in video memory and SnapReel streams it. The table is for NVIDIA cards (checked on an RTX 3060).
+doesn't fit in video memory and Tvorka streams it. The table is for NVIDIA cards (checked on an RTX 3060).
 
 **Supported graphics:** NVIDIA GeForce / RTX (CUDA, driver 580+); AMD Radeon RX 6000 / 7000 / 9000 and
 Radeon PRO W6000 / W7000 (ROCm); integrated Radeon 680M/660M, 780M/760M/740M, 890M/880M, 860M/840M,
@@ -231,18 +239,18 @@ please tell how it went.
 
 | What | Where |
 |---|---|
-| Models | `SnapReel\models` (next to `SnapReel.cmd`; can be changed in Settings) |
-| Results | `SnapReel\output` |
-| Settings, history, logs, plugins | `%APPDATA%\SnapReel` |
+| Models | `Tvorka\models` (next to `Tvorka.cmd`; can be changed in Settings) |
+| Results | `Tvorka\output` |
+| Settings, history, logs, plugins | `%APPDATA%\Tvorka` |
 
 ### FAQ
 
 **Generation is very slow.** Check the estimate under the model picker. "Slow" means the model doesn't fit in
 video memory: choose a lighter one (SD Turbo, SDXL Turbo, CogVideoX 2B) or a smaller size.
 
-**I have a graphics card but SnapReel says "CPU".** Update the graphics driver (NVIDIA needs 580 or newer)
+**I have a graphics card but Tvorka says "CPU".** Update the graphics driver (NVIDIA needs 580 or newer)
 and press the button in Settings → This computer: "Install the GPU version of PyTorch" for NVIDIA or
-"Set up SnapReel for …" for AMD and Intel.
+"Set up Tvorka for …" for AMD and Intel.
 
 **I want my own model.** Models → Add your own: search Hugging Face or pick a `.safetensors` file / diffusers folder.
 LoRAs are added the same way. For models the built-in engines can't run there are [plugins](docs/PLUGINS.md).
@@ -255,22 +263,22 @@ The one exception is the optional online Edge TTS voice.
 You need [uv](https://docs.astral.sh/uv/); it installs the right Python by itself.
 
 ```bash
-git clone https://github.com/Rolo909/SnapReel.git
-cd SnapReel
+git clone https://github.com/Rolo909/Tvorka.git
+cd Tvorka
 uv sync --extra cu130 --extra online   # NVIDIA; without one: --extra cpu
 # AMD Radeon RX 7000: uv sync --python 3.13 --extra rocm-gfx110x --extra online
 # Intel Arc:          uv sync --extra xpu --extra online
-# (the extra for each card is in src/snapreel/data/gpu_support.json)
-uv run python -m snapreel
+# (the extra for each card is in src/tvorka/data/gpu_support.json)
+uv run python -m tvorka
 ```
 
 Tests and lint: `uv run pytest`, `uv run ruff check src tests`.
-Release archive: `uv run python scripts/build_release.py` → `dist/SnapReel-<version>-windows.zip`.
+Release archive: `uv run python scripts/build_release.py` → `dist/Tvorka-<version>-windows.zip`.
 Layout: UI (`gui`) → background jobs (`workers`) → model engines (`engines`) → core (`core`).
 
 ### Licenses
 
-SnapReel's code is [MIT](LICENSE)-licensed. **That does not cover the models**: each model has its own license,
+Tvorka's code is [MIT](LICENSE)-licensed. **That does not cover the models**: each model has its own license,
 shown in the catalog. Some allow non-commercial use only — e.g. Silero (CC BY-NC-SA 4.0), MMS (CC BY-NC 4.0)
 and SD Turbo / SDXL Turbo (Stability AI Community). Check the model's license before using results commercially.
 Real-ESRGAN is BSD-3-Clause.

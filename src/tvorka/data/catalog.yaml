@@ -1,0 +1,410 @@
+# Tvorka model catalog.
+#
+# memory:  component -> GB occupied at the run precision (not the download size)
+# act_gb:  working memory at the native resolution / frame count
+# The same file is served from the repository so the app can pick up new models
+# without an update (Settings -> Catalog URL).
+version: 1
+models:
+  # ------------------------------------------------------------ images
+  - id: stabilityai/sd-turbo
+    name: SD Turbo
+    kind: image
+    author: Stability AI
+    license: Stability AI Community
+    summary:
+      ru: Самая лёгкая модель. Картинка за 1–4 шага, работает даже на 4 ГБ видеопамяти.
+      en: The lightest option. An image in 1–4 steps, runs even on 4 GB of VRAM.
+    tags: [fast, 512px]
+    download_gb: 2.6
+    memory: {unet: 1.73, text_encoder: 0.68, vae: 0.17}
+    act_gb: 0.65
+    dtype: fp16
+    native: [512, 512]
+    max_side: 768
+    defaults: {steps: 2, guidance: 0.0, negative: false, max_steps: 8}
+    reference: [img2img]
+
+  - id: Lykon/dreamshaper-8
+    name: DreamShaper 8
+    kind: image
+    author: Lykon
+    license: CreativeML OpenRAIL-M
+    summary:
+      ru: Универсальная модель на базе SD 1.5 — иллюстрации, портреты, арт. Скромные требования.
+      en: Versatile SD 1.5 model for illustration, portraits and art. Modest requirements.
+    tags: [sd1.5, 512px]
+    download_gb: 2.8
+    memory: {unet: 1.72, text_encoder: 0.25, vae: 0.17, safety_checker: 0.61}
+    act_gb: 0.7
+    dtype: fp16
+    native: [512, 512]
+    max_side: 1024
+    defaults: {steps: 25, guidance: 7.0, negative: true}
+    reference: [img2img, ip_adapter_sd15]
+
+  - id: stabilityai/sdxl-turbo
+    name: SDXL Turbo
+    kind: image
+    author: Stability AI
+    license: Stability AI Community
+    summary:
+      ru: Быстрый SDXL — хорошее качество за 1–4 шага. Лучший старт для 8 ГБ видеопамяти.
+      en: Fast SDXL with good quality in 1–4 steps. The best start for 8 GB of VRAM.
+    tags: [fast, sdxl]
+    download_gb: 7.0
+    memory: {unet: 5.14, text_encoder_2: 1.39, text_encoder: 0.25, vae: 0.17}
+    act_gb: 0.5
+    dtype: fp16
+    native: [512, 512]
+    max_side: 1024
+    defaults: {steps: 4, guidance: 0.0, negative: false, max_steps: 8}
+    reference: [img2img, ip_adapter_sdxl]
+
+  - id: stabilityai/stable-diffusion-xl-base-1.0
+    name: Stable Diffusion XL
+    kind: image
+    author: Stability AI
+    license: OpenRAIL++
+    summary:
+      ru: Классический SDXL в 1024 px. Детальнее Turbo, но требует 25–30 шагов.
+      en: Classic SDXL at 1024 px. More detail than Turbo at 25–30 steps.
+    tags: [sdxl, 1024px]
+    download_gb: 7.0
+    memory: {unet: 5.14, text_encoder_2: 1.39, text_encoder: 0.25, vae: 0.17}
+    act_gb: 1.6
+    dtype: fp16
+    native: [1024, 1024]
+    max_side: 1536
+    defaults: {steps: 28, guidance: 6.5, negative: true}
+    reference: [img2img, ip_adapter_sdxl]
+
+  - id: Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers
+    name: Sana Sprint 0.6B
+    kind: image
+    author: NVIDIA
+    license: NVIDIA Open Model
+    summary:
+      ru: 1024 px всего за 2 шага. Компактная и очень быстрая модель нового поколения.
+      en: 1024 px in just 2 steps. A compact, very fast new-generation model.
+    tags: [fast, 1024px]
+    download_gb: 7.7
+    memory: {text_encoder: 5.23, transformer: 1.19, vae: 0.63}
+    act_gb: 1.5
+    dtype: bf16
+    native: [1024, 1024]
+    max_side: 1536
+    multiple: 32
+    defaults: {steps: 2, guidance: 4.5, negative: false, max_steps: 8}
+    reference: [img2img]
+    i2i_pipeline: SanaSprintImg2ImgPipeline
+
+  - id: black-forest-labs/FLUX.2-klein-4B
+    name: FLUX.2 klein 4B
+    kind: image
+    author: Black Forest Labs
+    license: Apache 2.0
+    summary:
+      ru: Высокое качество и точное следование промту за 4 шага. Умеет редактировать по референсу.
+      en: High quality and strong prompt adherence in 4 steps. Can edit from a reference image.
+    tags: [quality, 1024px]
+    download_gb: 16.0
+    memory: {text_encoder: 8.05, transformer: 7.75, vae: 0.17}
+    act_gb: 2.0
+    dtype: bf16
+    native: [1024, 1024]
+    max_side: 2048
+    multiple: 16
+    defaults: {steps: 4, guidance: 1.0, negative: false, max_steps: 12}
+    reference: [native]
+
+  - id: Tongyi-MAI/Z-Image-Turbo
+    name: Z-Image Turbo
+    kind: image
+    author: Alibaba Tongyi
+    license: Apache 2.0
+    summary:
+      ru: Фотореализм и чистый текст на картинке за 8 шагов. Тяжёлая — лучше от 16 ГБ видеопамяти.
+      en: Photorealism and clean in-image text in 8 steps. Heavy — best with 16 GB of VRAM.
+    tags: [quality, photo]
+    download_gb: 32.9
+    memory: {transformer: 12.3, text_encoder: 8.05, vae: 0.17}
+    act_gb: 2.0
+    dtype: bf16
+    native: [1024, 1024]
+    max_side: 2048
+    multiple: 16
+    defaults: {steps: 8, guidance: 0.0, negative: false, max_steps: 16}
+    reference: [img2img]
+
+  - id: black-forest-labs/FLUX.1-schnell
+    name: FLUX.1 schnell
+    kind: image
+    author: Black Forest Labs
+    license: Apache 2.0
+    summary:
+      ru: Эталонное качество за 4 шага. Очень тяжёлая модель; требует входа в Hugging Face.
+      en: Reference quality in 4 steps. A very heavy model; requires a Hugging Face login.
+    tags: [quality, heavy]
+    download_gb: 33.7
+    memory: {transformer: 23.8, text_encoder_2: 9.52, text_encoder: 0.25, vae: 0.17}
+    act_gb: 2.0
+    dtype: bf16
+    native: [1024, 1024]
+    max_side: 2048
+    multiple: 16
+    defaults: {steps: 4, guidance: 0.0, negative: false, max_steps: 12}
+    reference: [img2img]
+    gated: true
+
+  # ------------------------------------------------------------- video
+  - id: THUDM/CogVideoX-2b
+    name: CogVideoX 2B
+    kind: video
+    author: Zhipu AI
+    license: Apache 2.0
+    summary:
+      ru: Самая доступная видеомодель. 6 секунд, 720×480, только по тексту.
+      en: The most accessible video model. 6 seconds at 720×480, text only.
+    tags: [text-to-video, 480p]
+    download_gb: 13.8
+    memory: {text_encoder: 9.52, transformer: 3.39, vae: 0.86}
+    act_gb: 3.0
+    dtype: fp16
+    native: [720, 480]
+    fixed_size: true
+    multiple: 16
+    frame_rule: 4
+    defaults: {steps: 40, guidance: 6.0, negative: true, frames: 49, fps: 8, max_frames: 49}
+
+  - id: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+    name: Wan 2.1 T2V 1.3B
+    kind: video
+    author: Alibaba Wan
+    license: Apache 2.0
+    summary:
+      ru: Плавное движение и хорошая композиция. Рассчитана на 8 ГБ видеопамяти, 480p.
+      en: Smooth motion and solid composition. Designed for 8 GB of VRAM at 480p.
+    tags: [text-to-video, 480p]
+    download_gb: 28.9
+    memory: {text_encoder: 11.4, transformer: 2.84, vae: 0.51}
+    act_gb: 3.5
+    dtype: bf16
+    native: [832, 480]
+    max_side: 1280
+    multiple: 16
+    frame_rule: 4
+    defaults: {steps: 30, guidance: 5.0, negative: true, frames: 81, fps: 16, max_frames: 121}
+
+  - id: Lightricks/LTX-Video
+    name: LTX-Video 2B
+    kind: video
+    author: Lightricks
+    license: LTX-Video Open
+    summary:
+      ru: Очень быстрая генерация видео. Понимает и текст, и первый кадр-референс.
+      en: Very fast video generation. Takes text and an optional first-frame reference.
+    tags: [text-to-video, image-to-video]
+    download_gb: 28.4
+    memory: {text_encoder: 9.52, transformer: 3.85, vae: 0.84}
+    act_gb: 3.0
+    dtype: bf16
+    native: [704, 480]
+    max_side: 1280
+    multiple: 32
+    frame_rule: 8
+    defaults: {steps: 40, guidance: 3.0, negative: true, frames: 97, fps: 24, max_frames: 257}
+    reference: [i2v]
+    i2v_pipeline: LTXImageToVideoPipeline
+
+  - id: Wan-AI/Wan2.2-TI2V-5B-Diffusers
+    name: Wan 2.2 TI2V 5B
+    kind: video
+    author: Alibaba Wan
+    license: Apache 2.0
+    summary:
+      ru: 720p при 24 кадрах/с, текст или первый кадр. Тяжёлая — лучше от 16 ГБ видеопамяти.
+      en: 720p at 24 fps from text or a first frame. Heavy — best with 16 GB of VRAM.
+    tags: [text-to-video, image-to-video, 720p]
+    download_gb: 34.2
+    memory: {text_encoder: 11.4, transformer: 10.0, vae: 2.82}
+    act_gb: 5.0
+    dtype: bf16
+    native: [1280, 704]
+    max_side: 1280
+    multiple: 32
+    frame_rule: 4
+    defaults: {steps: 40, guidance: 5.0, negative: true, frames: 81, fps: 24, max_frames: 121}
+    reference: [i2v]
+    i2v_pipeline: WanImageToVideoPipeline
+
+  - id: THUDM/CogVideoX-5b-I2V
+    name: CogVideoX 5B I2V
+    kind: video
+    author: Zhipu AI
+    license: CogVideoX License
+    summary:
+      ru: Оживляет изображение — нужен кадр-референс. 6 секунд, 720×480.
+      en: Animates an image — a reference frame is required. 6 seconds at 720×480.
+    tags: [image-to-video, 480p]
+    download_gb: 21.6
+    memory: {transformer: 11.25, text_encoder: 9.52, vae: 0.86}
+    act_gb: 3.5
+    dtype: bf16
+    native: [720, 480]
+    fixed_size: true
+    multiple: 16
+    frame_rule: 4
+    defaults: {steps: 40, guidance: 6.0, negative: true, frames: 49, fps: 8, max_frames: 49}
+    reference: [i2v]
+    requires_reference: true
+
+  # ------------------------------------------------------------ speech
+  - id: silero/v5_ru
+    name: Silero v5 · русский
+    kind: speech
+    engine: silero
+    source: url
+    files:
+      - {url: "https://models.silero.ai/models/tts/ru/v5_ru.pt", name: v5_ru.pt, size: 145382211}
+    author: Silero
+    license: CC BY-NC-SA 4.0
+    summary:
+      ru: Лучшее качество русской речи. Расставляет ударения, работает в реальном времени на процессоре.
+      en: The best Russian speech quality. Places stress automatically, real-time on a CPU.
+    tags: [русский, cpu]
+    download_gb: 0.15
+    memory: {model: 0.4}
+    act_gb: 0.3
+    languages: [ru]
+    defaults: {sample_rate: 48000}
+    voices:
+      - {id: xenia, name: Ксения}
+      - {id: baya, name: Байя}
+      - {id: kseniya, name: Ксения 2}
+      - {id: aidar, name: Айдар}
+      - {id: eugene, name: Евгений}
+
+  - id: silero/v4_ru
+    name: Silero v4 · русский
+    kind: speech
+    engine: silero
+    source: url
+    files:
+      - {url: "https://models.silero.ai/models/tts/ru/v4_ru.pt", name: v4_ru.pt, size: 40107184}
+    author: Silero
+    license: CC BY-NC-SA 4.0
+    summary:
+      ru: Компактная русская модель — 40 МБ. Быстрее v5, качество чуть проще.
+      en: A compact 40 MB Russian model. Faster than v5 with slightly simpler quality.
+    tags: [русский, cpu, 40 МБ]
+    download_gb: 0.04
+    memory: {model: 0.2}
+    act_gb: 0.2
+    languages: [ru]
+    defaults: {sample_rate: 48000}
+    voices:
+      - {id: xenia, name: Ксения}
+      - {id: baya, name: Байя}
+      - {id: kseniya, name: Ксения 2}
+      - {id: aidar, name: Айдар}
+      - {id: eugene, name: Евгений}
+
+  - id: silero/v3_en
+    name: Silero v3 · English
+    kind: speech
+    engine: silero
+    source: url
+    files:
+      - {url: "https://models.silero.ai/models/tts/en/v3_en.pt", name: v3_en.pt, size: 57194546}
+    author: Silero
+    license: CC BY-NC-SA 4.0
+    summary:
+      ru: Английская речь, более сотни голосов. Работает на процессоре.
+      en: English speech with over a hundred voices. Runs on a CPU.
+    tags: [english, cpu]
+    download_gb: 0.06
+    memory: {model: 0.2}
+    act_gb: 0.2
+    languages: [en]
+    defaults: {sample_rate: 48000}
+    voices:
+      - {id: en_0, name: Voice 0}
+      - {id: en_1, name: Voice 1}
+      - {id: en_5, name: Voice 5}
+      - {id: en_10, name: Voice 10}
+      - {id: en_21, name: Voice 21}
+      - {id: en_45, name: Voice 45}
+      - {id: en_56, name: Voice 56}
+      - {id: en_99, name: Voice 99}
+
+  - id: facebook/mms-tts-rus
+    name: MMS · русский
+    kind: speech
+    engine: transformers_tts
+    author: Meta
+    license: CC BY-NC 4.0
+    summary:
+      ru: Лёгкая модель VITS от Meta. Один голос; по тому же принципу добавляются сотни языков.
+      en: A lightweight VITS model by Meta. One voice; hundreds of languages can be added the same way.
+    tags: [русский, cpu]
+    download_gb: 0.15
+    memory: {model: 0.3}
+    act_gb: 0.3
+    languages: [ru]
+
+  - id: facebook/mms-tts-eng
+    name: MMS · English
+    kind: speech
+    engine: transformers_tts
+    author: Meta
+    license: CC BY-NC 4.0
+    summary:
+      ru: Лёгкая английская модель VITS от Meta. Один голос.
+      en: A lightweight English VITS model by Meta. One voice.
+    tags: [english, cpu]
+    download_gb: 0.15
+    memory: {model: 0.3}
+    act_gb: 0.3
+    languages: [en]
+
+  - id: suno/bark-small
+    name: Bark small
+    kind: speech
+    engine: transformers_tts
+    author: Suno
+    license: MIT
+    summary:
+      ru: Выразительная речь с интонациями, смехом и паузами. Медленнее остальных, лучше на видеокарте.
+      en: Expressive speech with intonation, laughter and pauses. Slower than the rest, best on a GPU.
+    tags: [многоязычная, expressive]
+    download_gb: 1.7
+    memory: {model: 1.9}
+    act_gb: 1.0
+    languages: [ru, en]
+    voices:
+      - {id: v2/ru_speaker_3, name: Русский · мужской 1}
+      - {id: v2/ru_speaker_4, name: Русский · мужской 2}
+      - {id: v2/ru_speaker_5, name: Русский · женский 1}
+      - {id: v2/ru_speaker_6, name: Русский · женский 2}
+      - {id: v2/en_speaker_6, name: English · male}
+      - {id: v2/en_speaker_9, name: English · female}
+
+  - id: edge/online
+    name: Edge TTS · онлайн
+    kind: speech
+    engine: edge
+    source: online
+    author: Microsoft
+    license: Online service
+    summary:
+      ru: Облачные голоса Microsoft. Не локально — текст отправляется в интернет. Ничего скачивать не нужно.
+      en: Microsoft cloud voices. Not local — the text is sent over the internet. Nothing to download.
+    tags: [онлайн]
+    languages: [ru, en]
+    voices:
+      - {id: ru-RU-SvetlanaNeural, name: Светлана}
+      - {id: ru-RU-DmitryNeural, name: Дмитрий}
+      - {id: en-US-AriaNeural, name: Aria}
+      - {id: en-US-ChristopherNeural, name: Christopher}
+      - {id: en-GB-SoniaNeural, name: Sonia}

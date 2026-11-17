@@ -10,12 +10,12 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("pytestqt")
 
-from snapreel.core.settings import Settings
-from snapreel.gui import theme
-from snapreel.gui.main_window import MainWindow
-from snapreel.gui.pages.image import ImagePage
-from snapreel.gui.services import Services
-from snapreel.i18n import set_language
+from tvorka.core.settings import Settings
+from tvorka.gui import theme
+from tvorka.gui.main_window import MainWindow
+from tvorka.gui.pages.image import ImagePage
+from tvorka.gui.services import Services
+from tvorka.i18n import set_language
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_exact_size_shows_the_route(services: Services, qtbot) -> None:
 
 
 def test_main_window_navigation(services: Services, qtbot) -> None:
-    from snapreel.app import build_pages
+    from tvorka.app import build_pages
 
     window = MainWindow(services, build_pages(services, None))
     qtbot.addWidget(window)
@@ -82,7 +82,7 @@ def test_main_window_navigation(services: Services, qtbot) -> None:
 def test_settings_page_switches_language_and_theme(services: Services, qtbot) -> None:
     from PySide6.QtWidgets import QApplication
 
-    from snapreel.app import open_window
+    from tvorka.app import open_window
 
     window = open_window(QApplication.instance(), services)
     qtbot.addWidget(window)
@@ -100,10 +100,10 @@ def test_settings_page_switches_language_and_theme(services: Services, qtbot) ->
     new.current_page()._theme_changed("light")
     newest = QApplication.instance().property("main_window")
     qtbot.addWidget(newest)
-    from snapreel.gui import theme
+    from tvorka.gui import theme
 
     assert theme.name() == "light" and services.settings.theme == "light"
-    from snapreel.i18n import set_language
+    from tvorka.i18n import set_language
 
     set_language("ru")
     theme.apply(QApplication.instance(), "dark")
@@ -112,7 +112,7 @@ def test_settings_page_switches_language_and_theme(services: Services, qtbot) ->
 def test_first_run_opens_the_welcome_screen_once(services: Services, qtbot) -> None:
     from PySide6.QtWidgets import QApplication
 
-    from snapreel.app import open_window
+    from tvorka.app import open_window
 
     window = open_window(QApplication.instance(), services)
     qtbot.addWidget(window)
@@ -128,8 +128,8 @@ def test_first_run_opens_the_welcome_screen_once(services: Services, qtbot) -> N
 def test_welcome_start_downloads_selection(services: Services, qtbot, monkeypatch) -> None:
     from PySide6.QtWidgets import QApplication
 
-    from snapreel.app import open_window
-    from snapreel.core.hardware import GpuInfo, Hardware, TorchBuild
+    from tvorka.app import open_window
+    from tvorka.core.hardware import GpuInfo, Hardware, TorchBuild
 
     services.hardware = Hardware("OS", "CPU", 6, 12, 16.0, 9.0, 8.0,
                                  (GpuInfo("GPU", "nvidia", 8.0, 7.5),), TorchBuild(True, "2.14", "13.0"))
@@ -150,7 +150,7 @@ def test_buttons_take_focus_from_tab_only_and_pages_focus_their_input(services: 
     from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QPushButton
 
-    from snapreel.app import build_pages
+    from tvorka.app import build_pages
 
     services.settings.welcome_done = True
     window = MainWindow(services, build_pages(services, None))

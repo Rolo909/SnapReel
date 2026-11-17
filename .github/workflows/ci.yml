@@ -46,7 +46,7 @@ jobs:
       - name: Check that the tag matches the version
         shell: bash
         run: |
-          version=$(grep -oP '__version__ = "\K[^"]+' src/snapreel/__init__.py)
+          version=$(grep -oP '__version__ = "\K[^"]+' src/tvorka/__init__.py)
           test "v$version" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != v$version"; exit 1; }
 
       - name: Build
@@ -55,5 +55,5 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/SnapReel-*-windows.zip
+          files: dist/Tvorka-*-windows.zip
           generate_release_notes: true

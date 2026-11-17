@@ -6,10 +6,10 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from snapreel.core import advisor
-from snapreel.core.catalog import Catalog
-from snapreel.core.hardware import GpuInfo, Hardware, TorchBuild
-from snapreel.gui.pages.welcome import recommend
+from tvorka.core import advisor
+from tvorka.core.catalog import Catalog
+from tvorka.core.hardware import GpuInfo, Hardware, TorchBuild
+from tvorka.gui.pages.welcome import recommend
 
 CUDA = TorchBuild(True, "2.14.1+cu130", "13.0")
 

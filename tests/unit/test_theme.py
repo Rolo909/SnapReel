@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from snapreel.gui import theme
+from tvorka.gui import theme
 
 
 @pytest.mark.parametrize("name", ["dark", "light"])

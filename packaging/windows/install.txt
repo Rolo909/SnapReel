@@ -1,61 +1,72 @@
-SnapReel — локальная ИИ-студия: изображения, видео и озвучка на вашем компьютере.
+Tvorka — локальная ИИ-студия: изображения, видео и озвучка на вашем компьютере.
 Автор реализации: Rolo909 — https://github.com/Rolo909
 
 КАК УСТАНОВИТЬ
 
-1. Распакуйте архив в удобное место, например D:\SnapReel или в «Документы».
-   Не запускайте SnapReel прямо из архива — сначала распакуйте.
+1. Распакуйте архив в удобное место, например D:\Tvorka или в «Документы».
+   Не запускайте Tvorka прямо из архива — сначала распакуйте.
    Нужно около 8 ГБ свободного места (плюс место для моделей: от 2.5 ГБ).
 
-2. Дважды щёлкните файл «SnapReel» (SnapReel.cmd).
+2. Дважды щёлкните файл «Tvorka» (Tvorka.cmd).
    Если Windows покажет предупреждение «Windows защитила ваш компьютер» или
    «Не удаётся проверить издателя» — нажмите «Подробнее» → «Выполнить в любом случае».
    Это обычное предупреждение для бесплатных программ без платной подписи.
 
-3. Откроется окно «Подготовка к первому запуску». SnapReel сам скачает всё нужное
+3. Откроется окно «Подготовка к первому запуску». Tvorka сама скачает всё нужное
    (около 3 ГБ для NVIDIA, 2,5 ГБ для AMD Radeon, 2 ГБ для Intel Arc, 1 ГБ для остальных компьютеров).
    Нужен интернет. Это займёт от нескольких минут до получаса — один раз.
-   Если загрузка прервётся, запустите SnapReel снова: уже скачанные файлы сохранятся.
+   Если загрузка прервётся, запустите Tvorka снова: уже скачанные файлы сохранятся.
 
-4. Готово. На рабочем столе и в меню «Пуск» появится ярлык SnapReel.
-   В самом приложении выберите модель — SnapReel подскажет, какая подойдёт вашему компьютеру.
+4. Готово. На рабочем столе и в меню «Пуск» появится ярлык Tvorka.
+   В самом приложении выберите модель — Tvorka подскажет, какая подойдёт вашему компьютеру.
 
 КАК УДАЛИТЬ
-Удалите папку SnapReel и ярлыки на рабочем столе и в меню «Пуск». Больше ничего
-в системе не устанавливается. Настройки лежат в %APPDATA%\SnapReel — их тоже можно удалить.
+Удалите папку Tvorka и ярлыки на рабочем столе и в меню «Пуск». Больше ничего
+в системе не устанавливается. Настройки лежат в %APPDATA%\Tvorka — их тоже можно удалить.
 
 КАК ОБНОВИТЬ
 Скачайте новую версию и распакуйте её поверх старой папки (с заменой файлов).
 Скачанные модели и созданные работы останутся на месте.
 
+ЕСЛИ У ВАС БЫЛ SNAPREEL
+Tvorka — новое название SnapReel. Распакуйте Tvorka в любое место и запустите.
+Настройки, история и плагины перенесутся сами, а уже скачанные модели и работы
+Tvorka возьмёт из старой папки SnapReel — поэтому не удаляйте её. Ярлыки SnapReel
+на рабочем столе и в «Пуске» заменятся на ярлыки Tvorka.
+
 -------------------------------------------------------------------------------
 
-SnapReel — a local AI studio: images, video and voice-overs on your own computer.
+Tvorka — a local AI studio: images, video and voice-overs on your own computer.
 Author of the implementation: Rolo909 — https://github.com/Rolo909
 
 HOW TO INSTALL
 
-1. Unpack the archive somewhere convenient, for example D:\SnapReel or Documents.
-   Do not start SnapReel from inside the archive — unpack it first.
+1. Unpack the archive somewhere convenient, for example D:\Tvorka or Documents.
+   Do not start Tvorka from inside the archive — unpack it first.
    About 8 GB of free space is needed (plus space for models: 2.5 GB and up).
 
-2. Double-click "SnapReel" (SnapReel.cmd).
+2. Double-click "Tvorka" (Tvorka.cmd).
    If Windows shows "Windows protected your PC" or "The publisher could not be verified",
    click "More info" → "Run anyway". This is a usual warning for free programs
    without a paid signature.
 
-3. The "Getting ready for the first start" window opens. SnapReel downloads everything
+3. The "Getting ready for the first start" window opens. Tvorka downloads everything
    it needs by itself (about 3 GB for NVIDIA, 2.5 GB for AMD Radeon, 2 GB for Intel Arc, 1 GB for others).
    An internet connection is needed. It takes from a few minutes to half an hour — once.
-   If the download is interrupted, start SnapReel again: files already downloaded are kept.
+   If the download is interrupted, start Tvorka again: files already downloaded are kept.
 
-4. Done. A SnapReel shortcut appears on the desktop and in the Start menu.
-   In the app, choose a model — SnapReel tells you which ones suit your computer.
+4. Done. A Tvorka shortcut appears on the desktop and in the Start menu.
+   In the app, choose a model — Tvorka tells you which ones suit your computer.
 
 HOW TO REMOVE
-Delete the SnapReel folder and the shortcuts on the desktop and in the Start menu.
-Nothing else is installed in the system. Settings are in %APPDATA%\SnapReel — delete them too if you like.
+Delete the Tvorka folder and the shortcuts on the desktop and in the Start menu.
+Nothing else is installed in the system. Settings are in %APPDATA%\Tvorka — delete them too if you like.
 
 HOW TO UPDATE
 Download the new version and unpack it over the old folder, replacing the files.
 Downloaded models and your works stay where they are.
+
+IF YOU HAD SNAPREEL
+Tvorka is the new name of SnapReel. Unpack Tvorka anywhere and start it. Settings, history
+and plugins move over by themselves, and Tvorka keeps using the models and works in the old
+SnapReel folder — so do not delete it. The SnapReel shortcuts are replaced by Tvorka ones.

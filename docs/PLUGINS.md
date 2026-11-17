@@ -1,14 +1,14 @@
-# Плагины движков SnapReel
+# Плагины движков Tvorka
 
-Плагин добавляет в SnapReel новый **движок** — код, который загружает модель и создаёт результат.
+Плагин добавляет в Tvorka новый **движок** — код, который загружает модель и создаёт результат.
 Так можно подключить модель, которую встроенные движки (diffusers, Silero, transformers-TTS, Edge) не умеют запускать.
 
 ## Где лежат
 
-`<папка данных>/plugins/*.py` — на Windows `%APPDATA%\SnapReel\plugins\`.
+`<папка данных>/plugins/*.py` — на Windows `%APPDATA%\Tvorka\plugins\`.
 Каждый файл импортируется при запуске приложения. Файлы, начинающиеся с `_`, пропускаются.
 
-> Плагин — обычный Python-код с правами приложения. SnapReel загружает плагины **только** из этой папки
+> Плагин — обычный Python-код с правами приложения. Tvorka загружает плагины **только** из этой папки
 > и никогда — из удалённого каталога или интернета. Кладите сюда только код, которому доверяете.
 
 ## Минимальный пример
@@ -20,9 +20,9 @@ import time
 
 import numpy as np
 
-from snapreel.core.jobs import Job, Result, output_file
-from snapreel.engines import media
-from snapreel.engines.base import Context, Engine, EngineError, register_engine
+from tvorka.core.jobs import Job, Result, output_file
+from tvorka.engines import media
+from tvorka.engines.base import Context, Engine, EngineError, register_engine
 
 
 class SineToneEngine(Engine):
@@ -75,4 +75,4 @@ register_engine("sine_tone", SineToneEngine)
 - Модель остаётся загруженной между задачами; `load` вызывается заново только при смене модели или плана.
 
 Если плагин не загрузился (ошибка в коде или `register_engine` не вызван), приложение продолжает работу,
-а причина видна в журнале `<папка данных>/logs/snapreel.log`.
+а причина видна в журнале `<папка данных>/logs/tvorka.log`.

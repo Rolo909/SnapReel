@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from snapreel.core import advisor
-from snapreel.core.advisor import NO, Plan
-from snapreel.core.catalog import Catalog, ModelSpec
-from snapreel.core.hardware import GpuInfo, Hardware, TorchBuild
+from tvorka.core import advisor
+from tvorka.core.advisor import NO, Plan
+from tvorka.core.catalog import Catalog, ModelSpec
+from tvorka.core.hardware import GpuInfo, Hardware, TorchBuild
 
 CUDA = TorchBuild(True, "2.14.0+cu130", "13.0")
 CPU_TORCH = TorchBuild(True, "2.14.0+cpu", "")

@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from snapreel.core import updates
+from tvorka.core import updates
 
 
 @pytest.mark.parametrize(("candidate", "newer"), [("v1.0.1", True), ("1.1.0", True), ("v1.0.0", False),
@@ -29,7 +29,7 @@ def serve(monkeypatch: pytest.MonkeyPatch, payload: dict) -> None:
 
 def test_latest_release(monkeypatch: pytest.MonkeyPatch) -> None:
     serve(monkeypatch, {"tag_name": "v99.0.0",
-                        "html_url": "https://github.com/Rolo909/SnapReel/releases/tag/v99.0.0"})
+                        "html_url": "https://github.com/Rolo909/Tvorka/releases/tag/v99.0.0"})
     release = updates.latest_release()
     assert release is not None and release.version == "99.0.0" and release.url.endswith("v99.0.0")
 

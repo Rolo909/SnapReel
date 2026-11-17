@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from snapreel.core.hub import HubError
-from snapreel.core.local_import import (
+from tvorka.core.hub import HubError
+from tvorka.core.local_import import (
     is_silero_package,
     single_file_family,
     spec_from_path,

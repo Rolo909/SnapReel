@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from snapreel.core import catalog as catalog_module
-from snapreel.core.catalog import Catalog, ModelSpec
+from tvorka.core import catalog as catalog_module
+from tvorka.core.catalog import Catalog, ModelSpec
 
 
 def test_builtin_catalog_is_valid() -> None:

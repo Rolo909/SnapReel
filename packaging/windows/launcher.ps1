@@ -1,10 +1,10 @@
-﻿# SnapReel launcher and first-run installer for Windows.
+﻿# Tvorka launcher and first-run installer for Windows.
 #
-# Started by "SnapReel.cmd" (and by nothing else on the first run). When everything is
+# Started by "Tvorka.cmd" (and by nothing else on the first run). When everything is
 # installed it simply starts the app. Otherwise it shows a small window that downloads a
 # private Python and the AI components with uv into "runtime\", picking the PyTorch build
 # for the graphics card, creates desktop and Start menu shortcuts, and starts the app.
-# Nothing is installed system-wide; deleting the SnapReel folder removes everything.
+# Nothing is installed system-wide; deleting the Tvorka folder removes everything.
 
 param(
     [switch]$NoLaunch,     # install and create shortcuts, but do not start the app (tests)
@@ -22,9 +22,9 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # ---------------------------------------------------------------- locations
-$SetupDir = $PSScriptRoot                       # SnapReel\app\setup
-$App      = Split-Path -Parent $SetupDir        # SnapReel\app
-$Root     = Split-Path -Parent $App             # SnapReel
+$SetupDir = $PSScriptRoot                       # Tvorka\app\setup
+$App      = Split-Path -Parent $SetupDir        # Tvorka\app
+$Root     = Split-Path -Parent $App             # Tvorka
 $Runtime  = Join-Path $Root 'runtime'
 $Venv     = Join-Path $Runtime 'venv'
 $Cache    = Join-Path $Runtime 'cache'
@@ -34,19 +34,19 @@ $Log      = Join-Path $Runtime 'install.log'
 $Uv       = Join-Path $SetupDir 'uv.exe'
 $Pythonw  = Join-Path $Venv 'Scripts\pythonw.exe'
 $PythonC  = Join-Path $Venv 'Scripts\python.exe'
-$Icon     = Join-Path $App 'src\snapreel\assets\icons\app_icon.ico'
+$Icon     = Join-Path $App 'src\tvorka\assets\icons\app_icon.ico'
 
-$GpuTable = Join-Path $App 'src\snapreel\data\gpu_support.json'
+$GpuTable = Join-Path $App 'src\tvorka\data\gpu_support.json'
 
 if ($WaitPid -gt 0) {
     try { Wait-Process -Id $WaitPid -Timeout 60 -ErrorAction Stop } catch { }
 }
 
-$init = Get-Content (Join-Path $App 'src\snapreel\__init__.py') -Raw
+$init = Get-Content (Join-Path $App 'src\tvorka\__init__.py') -Raw
 $Version = if ($init -match '__version__\s*=\s*"([^"]+)"') { $Matches[1] } else { '0' }
 
-function Start-SnapReel {
-    Start-Process -FilePath $Pythonw -ArgumentList @('-m', 'snapreel', '--home', "`"$Root`"") `
+function Start-Tvorka {
+    Start-Process -FilePath $Pythonw -ArgumentList @('-m', 'tvorka', '--home', "`"$Root`"") `
         -WorkingDirectory $Root
 }
 
@@ -55,7 +55,7 @@ if (-not $Reinstall -and -not $DetectOnly -and (Test-Path $Marker) -and (Test-Pa
     try {
         $state = Get-Content $Marker -Raw | ConvertFrom-Json
         if ($state.version -eq $Version -and $state.root -eq $Root) {
-            if (-not $NoLaunch) { Start-SnapReel }
+            if (-not $NoLaunch) { Start-Tvorka }
             exit 0
         }
     } catch { }  # unreadable marker: repair below
@@ -66,19 +66,19 @@ $ru = (Get-UICulture).TwoLetterISOLanguageName -eq 'ru'
 function T([string]$en, [string]$rus) { if ($ru) { $rus } else { $en } }
 
 $S = @{
-    Title      = 'SnapReel'
+    Title      = 'Tvorka'
     FirstRun   = T 'Getting ready for the first start. This is done only once.' 'Подготовка к первому запуску. Это нужно сделать только один раз.'
-    Update     = T 'Updating SnapReel components.' 'Обновляем компоненты SnapReel.'
+    Update     = T 'Updating Tvorka components.' 'Обновляем компоненты Tvorka.'
     Check      = T 'Step 1 of 3 · Checking this computer' 'Шаг 1 из 3 · Проверяем компьютер'
     Download   = T 'Step 2 of 3 · Downloading the AI components' 'Шаг 2 из 3 · Скачиваем компоненты ИИ'
     Finish     = T 'Step 3 of 3 · Finishing' 'Шаг 3 из 3 · Завершаем установку'
-    Done       = T 'Done! SnapReel is starting…' 'Готово! SnapReel запускается…'
+    Done       = T 'Done! Tvorka is starting…' 'Готово! Tvorka запускается…'
     Hint       = T 'You can minimize this window. If the download is interrupted, the files already downloaded are kept.' 'Окно можно свернуть. Если загрузка прервётся, уже скачанные файлы сохранятся.'
     Nvidia     = T 'NVIDIA graphics card found: installing the fast GPU version (about {0}).' 'Найдена видеокарта NVIDIA: ставим быструю версию для видеокарты (около {0}).'
     NoNvidia   = T 'No supported graphics card: installing the compact version (about {0}). Models will run on the processor.' 'Подходящей видеокарты нет: ставим компактную версию (около {0}). Модели будут работать на процессоре.'
     OtherGpu   = T '{0} found: installing the version for this graphics card (about {1}).' 'Найдена видеокарта {0}: ставим версию для неё (около {1}).'
-    GpuFailed  = T 'The graphics card did not start with the GPU version — usually the driver is too old. Installing the compact version instead (about {0}); models will run on the processor. After updating the driver ({1}), press "Set up SnapReel for the graphics card" in Settings → This computer.' 'Видеокарта не запустилась с версией для неё — обычно из-за старого драйвера. Ставим компактную версию (около {0}); модели будут работать на процессоре. Обновите драйвер ({1}) и нажмите «Настроить SnapReel для видеокарты» в разделе «Настройки → Этот компьютер».'
-    OldDriver  = T 'The NVIDIA driver is too old for the GPU version ({0}; 580 or newer is needed). Installing the compact version for now. After updating the driver at nvidia.com, SnapReel offers the GPU version in Settings → This computer.' 'Драйвер NVIDIA слишком старый для версии с видеокартой ({0}; нужен 580 или новее). Пока ставим компактную версию. Обновите драйвер на nvidia.com — после этого SnapReel предложит версию для видеокарты в разделе «Настройки → Этот компьютер».'
+    GpuFailed  = T 'The graphics card did not start with the GPU version — usually the driver is too old. Installing the compact version instead (about {0}); models will run on the processor. After updating the driver ({1}), press "Set up Tvorka for the graphics card" in Settings → This computer.' 'Видеокарта не запустилась с версией для неё — обычно из-за старого драйвера. Ставим компактную версию (около {0}); модели будут работать на процессоре. Обновите драйвер ({1}) и нажмите «Настроить Tvorka для видеокарты» в разделе «Настройки → Этот компьютер».'
+    OldDriver  = T 'The NVIDIA driver is too old for the GPU version ({0}; 580 or newer is needed). Installing the compact version for now. After updating the driver at nvidia.com, Tvorka offers the GPU version in Settings → This computer.' 'Драйвер NVIDIA слишком старый для версии с видеокартой ({0}; нужен 580 или новее). Пока ставим компактную версию. Обновите драйвер на nvidia.com — после этого Tvorka предложит версию для видеокарты в разделе «Настройки → Этот компьютер».'
     Progress   = T '{0} of about {1} · {2}/s · about {3} left' '{0} из примерно {1} · {2}/с · осталось около {3}'
     Starting   = T 'Starting the download…' 'Начинаем загрузку…'
     Checking   = T 'Checking the installation…' 'Проверяем установку…'
@@ -89,11 +89,11 @@ $S = @{
     OpenLog    = T 'Open the log' 'Открыть журнал'
     ErrTitle   = T 'The installation did not finish' 'Установка не завершилась'
     ErrNet     = T 'The internet connection was lost. Check it and press "Try again" — files that were already downloaded are not downloaded again.' 'Пропало подключение к интернету. Проверьте его и нажмите «Повторить» — уже скачанные файлы повторно скачиваться не будут.'
-    ErrDisk    = T 'Not enough free space on disk {0}: about {1} is needed, {2} is free. Free some space or move the SnapReel folder to another disk, then press "Try again".' 'Не хватает места на диске {0}: нужно около {1}, свободно {2}. Освободите место или перенесите папку SnapReel на другой диск и нажмите «Повторить».'
-    ErrPath    = T 'SnapReel cannot write to its folder. Move the SnapReel folder somewhere you own, for example to "Documents" or D:\, and start it again.' 'SnapReel не может записывать в свою папку. Перенесите папку SnapReel туда, где у вас есть права, например в «Документы» или на D:\, и запустите снова.'
+    ErrDisk    = T 'Not enough free space on disk {0}: about {1} is needed, {2} is free. Free some space or move the Tvorka folder to another disk, then press "Try again".' 'Не хватает места на диске {0}: нужно около {1}, свободно {2}. Освободите место или перенесите папку Tvorka на другой диск и нажмите «Повторить».'
+    ErrPath    = T 'Tvorka cannot write to its folder. Move the Tvorka folder somewhere you own, for example to "Documents" or D:\, and start it again.' 'Tvorka не может записывать в свою папку. Перенесите папку Tvorka туда, где у вас есть права, например в «Документы» или на D:\, и запустите снова.'
     ErrOther   = T 'Something went wrong. Press "Try again"; if it repeats, open the log and send it to the author.' 'Что-то пошло не так. Нажмите «Повторить»; если ошибка повторится, откройте журнал и отправьте его автору.'
     ErrCheck   = T 'The components were downloaded but do not start. Press "Try again" to repair them.' 'Компоненты скачаны, но не запускаются. Нажмите «Повторить», чтобы восстановить их.'
-    Cancelled  = T 'Installation cancelled. Start SnapReel again to continue — files that were already downloaded are kept.' 'Установка отменена. Запустите SnapReel снова, чтобы продолжить — уже скачанные файлы сохранятся.'
+    Cancelled  = T 'Installation cancelled. Start Tvorka again to continue — files that were already downloaded are kept.' 'Установка отменена. Запустите Tvorka снова, чтобы продолжить — уже скачанные файлы сохранятся.'
     Minutes    = T '{0} min' '{0} мин'
     LessMinute = T 'less than a minute' 'меньше минуты'
     GB         = T '{0:N1} GB' '{0:N1} ГБ'
@@ -115,7 +115,7 @@ $colors = @{
 }
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'SnapReel'
+$form.Text = 'Tvorka'
 $form.ClientSize = New-Object System.Drawing.Size(600, 360)
 $form.FormBorderStyle = 'FixedSingle'
 $form.MaximizeBox = $false
@@ -312,7 +312,7 @@ function Start-Install {
     Pump
     try {
         New-Item -ItemType Directory -Force -Path $Runtime | Out-Null
-        Write-Log "SnapReel $Version, root $Root"
+        Write-Log "Tvorka $Version, root $Root"
         # Files from a downloaded zip are marked "from the internet"; uv.exe must run silently.
         Get-ChildItem -Path $App -Recurse -File -ErrorAction SilentlyContinue |
             Unblock-File -ErrorAction SilentlyContinue
@@ -461,7 +461,7 @@ function Complete-Install {
     Pump
     $probe = Join-Path $Runtime 'check.py'
     Set-Content -Path $probe -Encoding UTF8 -Value @(
-        'import PySide6, diffusers, snapreel, torch',
+        'import PySide6, diffusers, tvorka, torch',
         'xpu = getattr(torch, "xpu", None)',
         'print("gpu" if torch.cuda.is_available() or (xpu is not None and xpu.is_available()) else "cpu")')
     $check = Start-Process -FilePath $PythonC -ArgumentList @("`"$probe`"") -WindowStyle Hidden -PassThru -Wait `
@@ -488,16 +488,18 @@ function Complete-Install {
         $shell = New-Object -ComObject WScript.Shell
         $places = @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))
         foreach ($folder in $places) {
-            $link = $shell.CreateShortcut((Join-Path $folder 'SnapReel.lnk'))
+            # Tvorka was called SnapReel up to 1.0: its shortcuts would start the old version.
+            Remove-Item -LiteralPath (Join-Path $folder 'SnapReel.lnk') -ErrorAction SilentlyContinue
+            $link = $shell.CreateShortcut((Join-Path $folder 'Tvorka.lnk'))
             $link.TargetPath = $Pythonw
-            $link.Arguments = "-m snapreel --home `"$Root`""
+            $link.Arguments = "-m tvorka --home `"$Root`""
             $link.WorkingDirectory = $Root
-            $link.Description = 'SnapReel'
+            $link.Description = 'Tvorka'
             if (Test-Path $Icon) { $link.IconLocation = "$Icon,0" }
             $link.Save()
         }
     } catch {
-        Write-Log "shortcuts: $_"   # not fatal: SnapReel.cmd still works
+        Write-Log "shortcuts: $_"   # not fatal: Tvorka.cmd still works
     } }
     @{ version = $Version; root = $Root; flavor = $script:flavor; python = $script:python
        gpu_failed = $script:gpuFailed; date = (Get-Date -Format s) } |
@@ -507,7 +509,7 @@ function Complete-Install {
     $detail.Text = ''
     Set-Progress 1.0
     Pump
-    if (-not $NoLaunch) { Start-SnapReel }
+    if (-not $NoLaunch) { Start-Tvorka }
     Start-Sleep -Milliseconds 1200
     $form.Close()
 }
@@ -536,7 +538,7 @@ $cancelButton.Add_Click({
         & taskkill.exe /T /F /PID $script:proc.Id | Out-Null
     }
     Write-Log 'cancelled by the user'
-    [System.Windows.Forms.MessageBox]::Show($S.Cancelled, 'SnapReel') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($S.Cancelled, 'Tvorka') | Out-Null
     $form.Close()
 })
 $retryButton.Add_Click({ Start-Install })

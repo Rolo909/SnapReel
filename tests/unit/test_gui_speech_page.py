@@ -8,11 +8,11 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("pytestqt")
 
-from snapreel.core.settings import Settings
-from snapreel.gui import theme
-from snapreel.gui.pages.speech import SpeechPage
-from snapreel.gui.services import Services
-from snapreel.i18n import set_language
+from tvorka.core.settings import Settings
+from tvorka.gui import theme
+from tvorka.gui.pages.speech import SpeechPage
+from tvorka.gui.services import Services
+from tvorka.i18n import set_language
 
 
 @pytest.fixture

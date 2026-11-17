@@ -5,15 +5,15 @@ import sys
 import threading
 from pathlib import Path
 
-from snapreel.core import logging_setup
+from tvorka.core import logging_setup
 
 
 def test_setup_writes_rotating_file(data_dir: Path) -> None:
     old_hook, old_thread_hook = sys.excepthook, threading.excepthook
     try:
         path = logging_setup.setup()
-        assert path == data_dir / "logs" / "snapreel.log"
-        logging.getLogger("snapreel.test").info("hello log")
+        assert path == data_dir / "logs" / "tvorka.log"
+        logging.getLogger("tvorka.test").info("hello log")
         try:
             raise RuntimeError("boom")
         except RuntimeError:
@@ -33,7 +33,7 @@ def test_setup_writes_rotating_file(data_dir: Path) -> None:
         assert len(logging.getLogger().handlers) == count
     finally:
         for handler in list(logging.getLogger().handlers):
-            if getattr(handler, "_snapreel", False):
+            if getattr(handler, "_tvorka", False):
                 logging.getLogger().removeHandler(handler)
                 handler.close()
         logging.captureWarnings(False)

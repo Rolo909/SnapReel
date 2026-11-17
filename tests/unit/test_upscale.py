@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from snapreel.core import advisor
-from snapreel.core.catalog import Catalog
-from snapreel.engines import upscale
+from tvorka.core import advisor
+from tvorka.core.catalog import Catalog
+from tvorka.engines import upscale
 
 
 @pytest.mark.parametrize(("length", "tile"), [(512, 256), (1000, 256), (100, 256)])

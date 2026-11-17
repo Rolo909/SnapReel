@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from snapreel.core.jobs import History, Job, Result, output_file
-from snapreel.core.settings import Settings
+from tvorka.core.jobs import History, Job, Result, output_file
+from tvorka.core.settings import Settings
 
 
 def test_settings_roundtrip(data_dir: Path) -> None:

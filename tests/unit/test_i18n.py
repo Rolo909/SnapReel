@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-import snapreel
-from snapreel import i18n
-from snapreel.i18n import messages
-from snapreel.i18n.ru import RU
+import tvorka
+from tvorka import i18n
+from tvorka.i18n import messages
+from tvorka.i18n.ru import RU
 
-SRC = Path(snapreel.__file__).parent
+SRC = Path(tvorka.__file__).parent
 
 
 def tr_literals() -> dict[str, str]:
