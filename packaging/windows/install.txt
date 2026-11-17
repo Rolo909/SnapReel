@@ -13,9 +13,9 @@ SnapReel — локальная ИИ-студия: изображения, ви�
    Это обычное предупреждение для бесплатных программ без платной подписи.
 
 3. Откроется окно «Подготовка к первому запуску». SnapReel сам скачает всё нужное
-   (около 3 ГБ для видеокарт NVIDIA или 1 ГБ для остальных компьютеров).
+   (около 3 ГБ для NVIDIA, 2,5 ГБ для AMD Radeon, 2 ГБ для Intel Arc, 1 ГБ для остальных компьютеров).
    Нужен интернет. Это займёт от нескольких минут до получаса — один раз.
-   Если загрузка прервётся, просто запустите SnapReel снова: она продолжится.
+   Если загрузка прервётся, запустите SnapReel снова: уже скачанные файлы сохранятся.
 
 4. Готово. На рабочем столе и в меню «Пуск» появится ярлык SnapReel.
    В самом приложении выберите модель — SnapReel подскажет, какая подойдёт вашему компьютеру.
@@ -45,9 +45,9 @@ HOW TO INSTALL
    without a paid signature.
 
 3. The "Getting ready for the first start" window opens. SnapReel downloads everything
-   it needs by itself (about 3 GB for NVIDIA graphics cards or 1 GB for other computers).
+   it needs by itself (about 3 GB for NVIDIA, 2.5 GB for AMD Radeon, 2 GB for Intel Arc, 1 GB for others).
    An internet connection is needed. It takes from a few minutes to half an hour — once.
-   If the download is interrupted, just start SnapReel again: it continues.
+   If the download is interrupted, start SnapReel again: files already downloaded are kept.
 
 4. Done. A SnapReel shortcut appears on the desktop and in the Start menu.
    In the app, choose a model — SnapReel tells you which ones suit your computer.

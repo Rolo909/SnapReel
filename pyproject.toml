@@ -36,14 +36,58 @@ dependencies = [
 online = [
     "edge-tts>=6.1",
 ]
-# Exactly one PyTorch flavour is installed: the first-run installer picks it by the graphics card.
-#   uv sync --extra cu130 --extra online   NVIDIA graphics (Windows, Linux)
-#   uv sync --extra cpu --extra online     everything else (and macOS, where it uses Apple GPUs)
-cpu = [
+# Exactly one PyTorch flavour is installed: the first-run installer picks it by the graphics card
+# (the table is src/snapreel/data/gpu_support.json).
+#   uv sync --extra cu130 --extra online                      NVIDIA graphics (Windows, Linux)
+#   uv sync --python 3.13 --extra rocm-gfx110x --extra online AMD Radeon RX 7000 and others, see below
+#   uv sync --extra xpu --extra online                        Intel Arc (discrete and Core Ultra)
+#   uv sync --extra cpu --extra online                        everything else (and macOS: Apple GPUs)
+# AMD (ROCm) and Intel (XPU) are wired up for Windows only. AMD publishes Windows wheels for
+# Python 3.10-3.13 only, one index per GPU family.
+cpu = ["torch>=2.5"]
+cu130 = ["torch>=2.5"]
+xpu = ["torch>=2.5", "triton-xpu; sys_platform == 'win32'"]
+# Radeon RX 6000, Radeon 680M/660M
+rocm-gfx103x = [
     "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx103x-all; sys_platform == 'win32'",
 ]
-cu130 = [
+# Radeon RX 7000, Radeon 780M/760M/740M
+rocm-gfx110x = [
     "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx110x-all; sys_platform == 'win32'",
+]
+# Radeon RX 9000
+rocm-gfx120x = [
+    "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx120x-all; sys_platform == 'win32'",
+]
+# Radeon 890M/880M (Ryzen AI 300)
+rocm-gfx1150 = [
+    "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx1150; sys_platform == 'win32'",
+]
+# Radeon 8060S/8050S/8040S (Ryzen AI Max)
+rocm-gfx1151 = [
+    "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx1151; sys_platform == 'win32'",
+]
+# Radeon 860M/840M (Ryzen AI 5/7 350)
+rocm-gfx1152 = [
+    "torch>=2.5",
+    "rocm; sys_platform == 'win32'",
+    "rocm-sdk-core; sys_platform == 'win32'",
+    "rocm-sdk-libraries-gfx1152; sys_platform == 'win32'",
 ]
 
 [dependency-groups]
@@ -60,13 +104,57 @@ snapreel = "snapreel.__main__:main"
 snapreel-gui = "snapreel.__main__:main"
 
 [tool.uv]
-conflicts = [[{ extra = "cpu" }, { extra = "cu130" }]]
+conflicts = [[
+    { extra = "cpu" }, { extra = "cu130" }, { extra = "xpu" }, { extra = "rocm-gfx103x" },
+    { extra = "rocm-gfx110x" }, { extra = "rocm-gfx120x" }, { extra = "rocm-gfx1150" },
+    { extra = "rocm-gfx1151" }, { extra = "rocm-gfx1152" },
+]]
 
 # macOS takes torch from PyPI (it already includes Apple GPU support).
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cpu", extra = "cpu", marker = "sys_platform != 'darwin'" },
     { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx103x", extra = "rocm-gfx103x", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx110x", extra = "rocm-gfx110x", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx120x", extra = "rocm-gfx120x", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx1150", extra = "rocm-gfx1150", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx1151", extra = "rocm-gfx1151", marker = "sys_platform == 'win32'" },
+    { index = "rocm-gfx1152", extra = "rocm-gfx1152", marker = "sys_platform == 'win32'" },
+]
+triton-xpu = [{ index = "pytorch-xpu", extra = "xpu" }]
+rocm = [
+    { index = "rocm-gfx103x", extra = "rocm-gfx103x" },
+    { index = "rocm-gfx110x", extra = "rocm-gfx110x" },
+    { index = "rocm-gfx120x", extra = "rocm-gfx120x" },
+    { index = "rocm-gfx1150", extra = "rocm-gfx1150" },
+    { index = "rocm-gfx1151", extra = "rocm-gfx1151" },
+    { index = "rocm-gfx1152", extra = "rocm-gfx1152" },
+]
+rocm-sdk-core = [
+    { index = "rocm-gfx103x", extra = "rocm-gfx103x" },
+    { index = "rocm-gfx110x", extra = "rocm-gfx110x" },
+    { index = "rocm-gfx120x", extra = "rocm-gfx120x" },
+    { index = "rocm-gfx1150", extra = "rocm-gfx1150" },
+    { index = "rocm-gfx1151", extra = "rocm-gfx1151" },
+    { index = "rocm-gfx1152", extra = "rocm-gfx1152" },
+]
+rocm-sdk-libraries-gfx103x-all = [{ index = "rocm-gfx103x", extra = "rocm-gfx103x" }]
+rocm-sdk-libraries-gfx110x-all = [{ index = "rocm-gfx110x", extra = "rocm-gfx110x" }]
+rocm-sdk-libraries-gfx120x-all = [{ index = "rocm-gfx120x", extra = "rocm-gfx120x" }]
+rocm-sdk-libraries-gfx1150 = [{ index = "rocm-gfx1150", extra = "rocm-gfx1150" }]
+rocm-sdk-libraries-gfx1151 = [{ index = "rocm-gfx1151", extra = "rocm-gfx1151" }]
+rocm-sdk-libraries-gfx1152 = [{ index = "rocm-gfx1152", extra = "rocm-gfx1152" }]
+
+# uv reads one wheel's metadata for all of them; AMD's Linux wheel of this torch adds triton, which has
+# no Windows build. These are the requirements of the Windows wheel.
+[[tool.uv.dependency-metadata]]
+name = "torch"
+version = "2.11.0+rocm7.13.0"
+requires-dist = [
+    "filelock", "typing-extensions>=4.10.0", "setuptools<82", "sympy>=1.13.3", "networkx>=2.5.1",
+    "jinja2", "fsspec>=0.8.5", "rocm[libraries]==7.13.0",
 ]
 
 [[tool.uv.index]]
@@ -79,10 +167,45 @@ name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx103x"
+url = "https://repo.amd.com/rocm/whl/gfx103X-all/"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx110x"
+url = "https://repo.amd.com/rocm/whl/gfx110X-all/"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx120x"
+url = "https://repo.amd.com/rocm/whl/gfx120X-all/"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx1150"
+url = "https://repo.amd.com/rocm/whl/gfx1150/"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx1151"
+url = "https://repo.amd.com/rocm/whl/gfx1151/"
+explicit = true
+
+[[tool.uv.index]]
+name = "rocm-gfx1152"
+url = "https://repo.amd.com/rocm/whl/gfx1152/"
+explicit = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/snapreel"]
 # Bundled data that is not Python code.
-artifacts = ["src/snapreel/data/*.yaml", "src/snapreel/assets/**"]
+artifacts = ["src/snapreel/data/*.yaml", "src/snapreel/data/*.json", "src/snapreel/assets/**"]
 
 [tool.ruff]
 target-version = "py311"

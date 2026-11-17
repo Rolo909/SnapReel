@@ -99,7 +99,7 @@ class DiffusersImageEngine(DiffusersEngine):
                 weights = hf_hub_download(upscale.REPO, upscale.WEIGHTS,
                                           cache_dir=str(ctx.settings.hub_path()),
                                           token=ctx.settings.token())
-                device = self.plan.device if self.plan.device in ("cuda", "mps") else "cpu"
+                device = self.plan.device if self.plan.device in ("cuda", "xpu", "mps") else "cpu"
                 self._upscaler = upscale.Upscaler(weights, device)
             except Exception as exc:  # noqa: BLE001 - enlarging still works, just plainer
                 log.warning("Real-ESRGAN unavailable, using Lanczos: %s", exc)

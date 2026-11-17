@@ -623,6 +623,9 @@ class ImagePage(Page):
             self.toasts.show(tr("The Video page is not available yet."), "info")
 
     # ============================================================ persistence
+    def save_state(self) -> None:
+        self._remember()
+
     def _remember(self) -> None:
         self.services.settings.remember(
             "image", model=self._spec.id if self._spec else "", prompt=self.prompt.toPlainText(),

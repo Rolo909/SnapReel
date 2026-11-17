@@ -7,9 +7,13 @@
 # Nothing is installed system-wide; deleting the SnapReel folder removes everything.
 
 param(
-    [switch]$NoLaunch,   # install and create shortcuts, but do not start the app (tests)
-    [switch]$Reinstall,  # rebuild the environment even if it looks fine
-    [switch]$NoShortcuts # do not create desktop / Start menu shortcuts (tests)
+    [switch]$NoLaunch,     # install and create shortcuts, but do not start the app (tests)
+    [switch]$Reinstall,    # rebuild the environment even if it looks fine
+    [switch]$NoShortcuts,  # do not create desktop / Start menu shortcuts (tests)
+    [int]$WaitPid = 0,     # wait for this process (the app asking for a GPU build) to exit first
+    [string]$SimulateGpu = '', # tests: pretend these adapters are installed, "Name|VEN_DEV;Name|VEN_DEV"
+    [switch]$DetectOnly,   # tests: print the chosen PyTorch build as JSON and exit
+    [double]$SimulateFreeSpace = -1 # tests: pretend the disk has this many bytes free
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +36,12 @@ $Pythonw  = Join-Path $Venv 'Scripts\pythonw.exe'
 $PythonC  = Join-Path $Venv 'Scripts\python.exe'
 $Icon     = Join-Path $App 'src\snapreel\assets\icons\app_icon.ico'
 
+$GpuTable = Join-Path $App 'src\snapreel\data\gpu_support.json'
+
+if ($WaitPid -gt 0) {
+    try { Wait-Process -Id $WaitPid -Timeout 60 -ErrorAction Stop } catch { }
+}
+
 $init = Get-Content (Join-Path $App 'src\snapreel\__init__.py') -Raw
 $Version = if ($init -match '__version__\s*=\s*"([^"]+)"') { $Matches[1] } else { '0' }
 
@@ -41,7 +51,7 @@ function Start-SnapReel {
 }
 
 # ---------------------------------------------------------------- fast path
-if (-not $Reinstall -and (Test-Path $Marker) -and (Test-Path $Pythonw)) {
+if (-not $Reinstall -and -not $DetectOnly -and (Test-Path $Marker) -and (Test-Path $Pythonw)) {
     try {
         $state = Get-Content $Marker -Raw | ConvertFrom-Json
         if ($state.version -eq $Version -and $state.root -eq $Root) {
@@ -63,9 +73,11 @@ $S = @{
     Download   = T 'Step 2 of 3 · Downloading the AI components' 'Шаг 2 из 3 · Скачиваем компоненты ИИ'
     Finish     = T 'Step 3 of 3 · Finishing' 'Шаг 3 из 3 · Завершаем установку'
     Done       = T 'Done! SnapReel is starting…' 'Готово! SnapReel запускается…'
-    Hint       = T 'You can minimize this window. If the download is interrupted, it continues from the same place next time.' 'Окно можно свернуть. Если загрузка прервётся, в следующий раз она продолжится с того же места.'
+    Hint       = T 'You can minimize this window. If the download is interrupted, the files already downloaded are kept.' 'Окно можно свернуть. Если загрузка прервётся, уже скачанные файлы сохранятся.'
     Nvidia     = T 'NVIDIA graphics card found: installing the fast GPU version (about {0}).' 'Найдена видеокарта NVIDIA: ставим быструю версию для видеокарты (около {0}).'
-    NoNvidia   = T 'No NVIDIA graphics card: installing the compact version (about {0}). Models will run on the processor.' 'Видеокарты NVIDIA нет: ставим компактную версию (около {0}). Модели будут работать на процессоре.'
+    NoNvidia   = T 'No supported graphics card: installing the compact version (about {0}). Models will run on the processor.' 'Подходящей видеокарты нет: ставим компактную версию (около {0}). Модели будут работать на процессоре.'
+    OtherGpu   = T '{0} found: installing the version for this graphics card (about {1}).' 'Найдена видеокарта {0}: ставим версию для неё (около {1}).'
+    GpuFailed  = T 'The graphics card did not start with the GPU version — usually the driver is too old. Installing the compact version instead (about {0}); models will run on the processor. After updating the driver ({1}), press "Set up SnapReel for the graphics card" in Settings → This computer.' 'Видеокарта не запустилась с версией для неё — обычно из-за старого драйвера. Ставим компактную версию (около {0}); модели будут работать на процессоре. Обновите драйвер ({1}) и нажмите «Настроить SnapReel для видеокарты» в разделе «Настройки → Этот компьютер».'
     OldDriver  = T 'The NVIDIA driver is too old for the GPU version ({0}; 580 or newer is needed). Installing the compact version for now. After updating the driver at nvidia.com, SnapReel offers the GPU version in Settings → This computer.' 'Драйвер NVIDIA слишком старый для версии с видеокартой ({0}; нужен 580 или новее). Пока ставим компактную версию. Обновите драйвер на nvidia.com — после этого SnapReel предложит версию для видеокарты в разделе «Настройки → Этот компьютер».'
     Progress   = T '{0} of about {1} · {2}/s · about {3} left' '{0} из примерно {1} · {2}/с · осталось около {3}'
     Starting   = T 'Starting the download…' 'Начинаем загрузку…'
@@ -76,12 +88,12 @@ $S = @{
     Close      = T 'Close' 'Закрыть'
     OpenLog    = T 'Open the log' 'Открыть журнал'
     ErrTitle   = T 'The installation did not finish' 'Установка не завершилась'
-    ErrNet     = T 'No connection to the internet. Check the connection and press "Try again" — the download continues where it stopped.' 'Нет подключения к интернету. Проверьте соединение и нажмите «Повторить» — загрузка продолжится с того же места.'
+    ErrNet     = T 'The internet connection was lost. Check it and press "Try again" — files that were already downloaded are not downloaded again.' 'Пропало подключение к интернету. Проверьте его и нажмите «Повторить» — уже скачанные файлы повторно скачиваться не будут.'
     ErrDisk    = T 'Not enough free space on disk {0}: about {1} is needed, {2} is free. Free some space or move the SnapReel folder to another disk, then press "Try again".' 'Не хватает места на диске {0}: нужно около {1}, свободно {2}. Освободите место или перенесите папку SnapReel на другой диск и нажмите «Повторить».'
     ErrPath    = T 'SnapReel cannot write to its folder. Move the SnapReel folder somewhere you own, for example to "Documents" or D:\, and start it again.' 'SnapReel не может записывать в свою папку. Перенесите папку SnapReel туда, где у вас есть права, например в «Документы» или на D:\, и запустите снова.'
     ErrOther   = T 'Something went wrong. Press "Try again"; if it repeats, open the log and send it to the author.' 'Что-то пошло не так. Нажмите «Повторить»; если ошибка повторится, откройте журнал и отправьте его автору.'
     ErrCheck   = T 'The components were downloaded but do not start. Press "Try again" to repair them.' 'Компоненты скачаны, но не запускаются. Нажмите «Повторить», чтобы восстановить их.'
-    Cancelled  = T 'Installation cancelled. Start SnapReel again to continue — nothing will be downloaded twice.' 'Установка отменена. Запустите SnapReel снова, чтобы продолжить — повторно ничего скачиваться не будет.'
+    Cancelled  = T 'Installation cancelled. Start SnapReel again to continue — files that were already downloaded are kept.' 'Установка отменена. Запустите SnapReel снова, чтобы продолжить — уже скачанные файлы сохранятся.'
     Minutes    = T '{0} min' '{0} мин'
     LessMinute = T 'less than a minute' 'меньше минуты'
     GB         = T '{0:N1} GB' '{0:N1} ГБ'
@@ -175,6 +187,8 @@ function Pump { [System.Windows.Forms.Application]::DoEvents() }
 # ---------------------------------------------------------------- state
 $script:proc = $null
 $script:flavor = 'cpu'
+$script:python = ''
+$script:gpuFailed = $false
 $script:expected = 1.4GB
 $script:lastBytes = 0.0
 $script:lastTime = [DateTime]::Now
@@ -212,6 +226,10 @@ function Show-Error([string]$message) {
 
 function Get-NvidiaDriver {
     # Win32 reports e.g. 32.0.15.8180 for driver 581.80: the last five digits are the version.
+    if ($SimulateGpu) {
+        if ($SimulateGpu -match 'NVIDIA[^|;]*\|[^;]*DRV_(\d+)') { return [double]$Matches[1] }
+        return $null
+    }
     foreach ($gpu in Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue) {
         if ($gpu.Name -match 'NVIDIA') {
             $digits = ($gpu.DriverVersion -replace '\.', '')
@@ -223,6 +241,45 @@ function Get-NvidiaDriver {
         }
     }
     return $null
+}
+
+function Get-Adapters {
+    # Name and PCI ids of every display adapter (or the simulated ones in tests).
+    if ($SimulateGpu) {
+        foreach ($item in $SimulateGpu -split ';') {
+            $name, $ids = $item -split '\|', 2
+            [pscustomobject]@{ Name = $name; Vendor = ($ids -replace '^VEN_([0-9A-F]{4}).*$', '$1'); Device = ($ids -replace '^.*DEV_([0-9A-F]{4}).*$', '$1') }
+        }
+        return
+    }
+    foreach ($gpu in Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue) {
+        $vendor = ''; $device = ''
+        if ($gpu.PNPDeviceID -match 'VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})') { $vendor = $Matches[1]; $device = $Matches[2] }
+        [pscustomobject]@{ Name = [string]$gpu.Name; Vendor = $vendor; Device = $device }
+    }
+}
+
+function Find-GpuBuild {
+    # The AMD / Intel adapter with a PyTorch build (see gpu_support.json): discrete first, AMD before Intel.
+    $table = Get-Content $GpuTable -Raw -Encoding UTF8 | ConvertFrom-Json
+    $best = $null; $bestRank = -1
+    foreach ($adapter in Get-Adapters) {
+        $vendor = if ($adapter.Vendor -in '1002', '1022' -or $adapter.Name -match 'AMD|Radeon') { 'amd' }
+                  elseif ($adapter.Vendor -eq '8086' -or $adapter.Name -match 'Intel') { 'intel' } else { '' }
+        if (-not $vendor) { continue }
+        foreach ($row in $table.$vendor) {
+            if ($row.ids -contains $adapter.Device -or $adapter.Name -match $row.name) {
+                $rank = $(if ($row.integrated) { 0 } else { 2 }) + $(if ($vendor -eq 'amd') { 1 } else { 0 })
+                if ($rank -gt $bestRank) {
+                    $bestRank = $rank
+                    $python = if ($row.flavor -like 'rocm-*') { $table.python.rocm } else { '' }
+                    $best = [pscustomobject]@{ Name = $adapter.Name; Vendor = $vendor; Flavor = $row.flavor; Python = $python }
+                }
+                break
+            }
+        }
+    }
+    return $best
 }
 
 function Test-Internet {
@@ -266,10 +323,20 @@ function Start-Install {
     }
 
     $driver = Get-NvidiaDriver
+    $other = Find-GpuBuild
     $note = ''
+    $script:python = ''
     if ($null -ne $driver -and $driver -ge 580) {
         $script:flavor = 'cu130'; $script:expected = 4.3GB
         $note = $S.Nvidia -f (Format-Size 3GB)
+    } elseif ($null -ne $other -and -not $script:gpuFailed) {
+        $script:flavor = $other.Flavor; $script:python = $other.Python
+        if ($other.Vendor -eq 'amd') { $script:expected = 4.6GB; $size = 2.5GB } else { $script:expected = 3.4GB; $size = 2GB }
+        $note = $S.OtherGpu -f $other.Name, (Format-Size $size)
+    } elseif ($script:gpuFailed) {
+        $script:flavor = 'cpu'; $script:expected = 2.0GB
+        $site = if ($null -ne $other -and $other.Vendor -eq 'intel') { 'intel.com' } elseif ($null -ne $other) { 'amd.com' } else { 'nvidia.com' }
+        $note = $S.GpuFailed -f (Format-Size 0.8GB), $site
     } elseif ($null -ne $driver) {
         $script:flavor = 'cpu'; $script:expected = 2.0GB
         $note = $S.OldDriver -f $driver
@@ -277,13 +344,16 @@ function Start-Install {
         $script:flavor = 'cpu'; $script:expected = 2.0GB
         $note = $S.NoNvidia -f (Format-Size 0.8GB)
     }
-    Write-Log "flavor $($script:flavor), NVIDIA driver: $driver"
+    # AMD builds exist for an older Python only; a processor fallback keeps that Python.
+    if ($script:gpuFailed -and $script:failedPython) { $script:python = $script:failedPython }
+    Write-Log "flavor $($script:flavor), python '$($script:python)', NVIDIA driver: $driver, other GPU: $($other.Name)"
     # A previous run with the other flavour leaves its torch in the cache; that is fine.
     $done = Get-FolderBytes $Cache
     $need = [Math]::Max(0.5GB, $script:expected - $done) + 1GB
     $drive = New-Object System.IO.DriveInfo((Split-Path -Qualifier $Root))
-    if ($drive.AvailableFreeSpace -lt $need) {
-        Show-Error ($S.ErrDisk -f $drive.Name, (Format-Size $need), (Format-Size $drive.AvailableFreeSpace))
+    $free = if ($SimulateFreeSpace -ge 0) { $SimulateFreeSpace } else { $drive.AvailableFreeSpace }
+    if ($free -lt $need) {
+        Show-Error ($S.ErrDisk -f $drive.Name, (Format-Size $need), (Format-Size $free))
         return
     }
     if (-not (Test-Internet)) {
@@ -295,7 +365,7 @@ function Start-Install {
     if (Test-Path $Marker) {
         try {
             $state = Get-Content $Marker -Raw | ConvertFrom-Json
-            if ($state.root -ne $Root -or $state.flavor -ne $script:flavor) {
+            if ($state.root -ne $Root -or $state.flavor -ne $script:flavor -or "$($state.python)" -ne $script:python) {
                 Remove-Item -Recurse -Force $Venv -ErrorAction SilentlyContinue
             }
         } catch { }
@@ -313,6 +383,9 @@ function Start-Install {
     $env:UV_PYTHON_PREFERENCE = 'only-managed'   # never touch a Python the user may have
     $env:UV_HTTP_TIMEOUT = '300'
     $env:UV_NO_PROGRESS = '1'
+    # One download at a time: uv keeps only finished files when the connection is lost.
+    $env:UV_CONCURRENT_DOWNLOADS = '1'
+    if ($script:python) { $env:UV_PYTHON = $script:python } else { Remove-Item Env:UV_PYTHON -ErrorAction SilentlyContinue }
     $arguments = @('sync', '--project', "`"$App`"", '--frozen', '--no-dev', '--no-editable',
                    '--extra', $script:flavor, '--extra', 'online')
     Write-Log ("uv " + ($arguments -join ' '))
@@ -354,7 +427,7 @@ function Update-Download {
         foreach ($name in 'uv-stderr.log', 'uv-stdout.log') {
             $path = Join-Path $Runtime $name
             if (Test-Path $path) {
-                $text = Get-Content $path -Raw -ErrorAction SilentlyContinue
+                $text = Get-Content $path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
                 if ($text) { Add-Content -Path $Log -Value $text -Encoding UTF8; $errors += $text }
             }
         }
@@ -363,11 +436,11 @@ function Update-Download {
         if ($script:cancelled) { return }
         if ($code -ne 0) {
             # Classify by the error lines only: the package list mentions e.g. "networkx".
-            $errors = (($errors -split "`r?`n") | Where-Object { $_ -match '(?i)^\s*(error|caused by|\s*╰|×|failed)' }) -join "`n"
+            $errors = (($errors -split "`r?`n") | Where-Object { $_ -match '(?i)^\s*(error|caused by|[│├╰×]|failed)' }) -join "`n"
             if ($errors -match '(?i)os error 112|not enough space|no space') {
                 $drive = New-Object System.IO.DriveInfo((Split-Path -Qualifier $Root))
                 Show-Error ($S.ErrDisk -f $drive.Name, (Format-Size ($script:expected / 2)), (Format-Size $drive.AvailableFreeSpace))
-            } elseif ($errors -match '(?i)failed to fetch|dns|timed out|connection|network|tls|certificate|request failed') {
+            } elseif ($errors -match '(?i)failed to fetch|dns|timed out|connect|network|tls|certificate|request failed|sending request|tunnel|end of file|reset by peer') {
                 Show-Error $S.ErrNet
             } elseif ($errors -match '(?i)access is denied|permission denied|os error 5\b') {
                 Show-Error $S.ErrPath
@@ -386,11 +459,26 @@ function Complete-Install {
     $detail.Text = $S.Checking
     Set-Progress 0.93
     Pump
-    $check = Start-Process -FilePath $PythonC -ArgumentList @('-c', '"import PySide6, torch, diffusers, snapreel"') `
-        -WindowStyle Hidden -PassThru -Wait -RedirectStandardError (Join-Path $Runtime 'check.log')
+    $probe = Join-Path $Runtime 'check.py'
+    Set-Content -Path $probe -Encoding UTF8 -Value @(
+        'import PySide6, diffusers, snapreel, torch',
+        'xpu = getattr(torch, "xpu", None)',
+        'print("gpu" if torch.cuda.is_available() or (xpu is not None and xpu.is_available()) else "cpu")')
+    $check = Start-Process -FilePath $PythonC -ArgumentList @("`"$probe`"") -WindowStyle Hidden -PassThru -Wait `
+        -RedirectStandardError (Join-Path $Runtime 'check.log') -RedirectStandardOutput (Join-Path $Runtime 'check.out')
+    $device = (Get-Content (Join-Path $Runtime 'check.out') -Raw -ErrorAction SilentlyContinue)
+    Write-Log "check: exit $($check.ExitCode), device $device"
     if ($check.ExitCode -ne 0) {
         Add-Content -Path $Log -Value (Get-Content (Join-Path $Runtime 'check.log') -Raw) -Encoding UTF8
         Show-Error $S.ErrCheck
+        return
+    }
+    if ($script:flavor -ne 'cpu' -and "$device".Trim() -ne 'gpu' -and -not $script:gpuFailed) {
+        # Typically an old graphics driver: fall back to the processor build rather than a dead end.
+        Write-Log "the $($script:flavor) build cannot use the graphics card; installing the processor build"
+        $script:gpuFailed = $true
+        $script:failedPython = $script:python
+        Start-Install
         return
     }
     $detail.Text = $S.Shortcuts
@@ -411,7 +499,8 @@ function Complete-Install {
     } catch {
         Write-Log "shortcuts: $_"   # not fatal: SnapReel.cmd still works
     } }
-    @{ version = $Version; root = $Root; flavor = $script:flavor; date = (Get-Date -Format s) } |
+    @{ version = $Version; root = $Root; flavor = $script:flavor; python = $script:python
+       gpu_failed = $script:gpuFailed; date = (Get-Date -Format s) } |
         ConvertTo-Json | Set-Content -Path $Marker -Encoding UTF8
     Write-Log 'installed'
     $step.Text = $S.Done
@@ -423,12 +512,22 @@ function Complete-Install {
     $form.Close()
 }
 
+if ($DetectOnly) {
+    $gpu = Find-GpuBuild
+    $driver = Get-NvidiaDriver
+    $flavor = if ($null -ne $driver -and $driver -ge 580) { 'cu130' } elseif ($null -ne $gpu) { $gpu.Flavor } else { 'cpu' }
+    $python = if ($flavor -ne 'cu130' -and $null -ne $gpu) { $gpu.Python } else { '' }
+    [Console]::Out.Write((@{ flavor = $flavor; python = $python; gpu = "$($gpu.Name)"; nvidia = $driver } | ConvertTo-Json -Compress))
+    exit 0
+}
+
 # ---------------------------------------------------------------- wiring
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 1000
 $timer.Add_Tick({ Update-Download })
 
 $script:cancelled = $false
+$script:failedPython = ''
 $cancelButton.Add_Click({
     if ($script:failed) { $form.Close(); return }
     $script:cancelled = $true

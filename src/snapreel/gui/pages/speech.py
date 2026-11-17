@@ -474,6 +474,9 @@ class SpeechPage(Page):
             self._playing.set_playing(state == QMediaPlayer.PlaybackState.PlayingState)
 
     # ============================================================ persistence
+    def save_state(self) -> None:
+        self._remember()
+
     def _remember(self) -> None:
         self.services.settings.remember("speech", model=self._spec.id if self._spec else "",
                                         voice=self.voice.currentData() or "", speed=self.speed.value(),

@@ -91,7 +91,7 @@ class FitBanner(QFrame):
         self.verdict.style().unpolish(self.verdict)
         self.verdict.style().polish(self.verdict)
         self.icon.setPixmap(icons.pixmap("check" if token == "ok" else "warning", 14, token))
-        on_gpu = fit.plan.device in ("cuda", "mps") and fit.have_vram_gb > 0
+        on_gpu = fit.plan.device in ("cuda", "xpu", "mps") and fit.have_vram_gb > 0
         if on_gpu:
             self.figures.setText(tr("VRAM {need:.1f} / {have:.1f} GB", need=fit.need_vram_gb,
                                     have=fit.have_vram_gb))

@@ -515,6 +515,9 @@ class VideoPage(Page):
             shutil.copyfile(self._current, target)
 
     # ============================================================ persistence
+    def save_state(self) -> None:
+        self._remember()
+
     def _remember(self) -> None:
         self.services.settings.remember(
             "video", model=self._spec.id if self._spec else "", prompt=self.prompt.toPlainText(),

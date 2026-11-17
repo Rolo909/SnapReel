@@ -13,7 +13,7 @@ import numpy as np
 
 from snapreel.core.jobs import Job, Result, output_file
 from snapreel.engines import media, textnorm
-from snapreel.engines.base import Context, Engine, EngineError, free_memory, quiet_libraries
+from snapreel.engines.base import Context, Engine, EngineError, device_available, free_memory, quiet_libraries
 
 log = logging.getLogger(__name__)
 
@@ -120,7 +120,6 @@ class TransformersTtsEngine(SpeechEngine):
 
     def load(self, ctx: Context) -> None:
         ctx.progress(0.0, "import")
-        import torch
         import transformers
 
         quiet_libraries()
@@ -138,7 +137,7 @@ class TransformersTtsEngine(SpeechEngine):
                 self.model = transformers.VitsModel.from_pretrained(str(path))
             else:
                 raise EngineError("unsupported", self.kind)
-            device = self.plan.device if (self.plan.device != "cuda" or torch.cuda.is_available()) else "cpu"
+            device = self.plan.device if device_available(self.plan.device) else "cpu"
             self.model.to(device).eval()
         except EngineError:
             raise

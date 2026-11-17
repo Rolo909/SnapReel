@@ -53,8 +53,10 @@ SnapReel запускает открытые ИИ-модели у вас на к
    Если Windows покажет «Windows защитила ваш компьютер» — нажмите **«Подробнее» → «Выполнить в любом случае»**.
    Это обычное предупреждение для бесплатных программ без платной подписи.
 3. Откроется окно «Подготовка к первому запуску». SnapReel сам определит видеокарту и скачает нужное:
-   около 3 ГБ для NVIDIA, около 1 ГБ для остальных компьютеров. Если загрузка прервётся — просто
-   запустите `SnapReel.cmd` ещё раз, она продолжится.
+   около 3 ГБ для NVIDIA, 2,5 ГБ для AMD Radeon, 2 ГБ для Intel Arc, 1 ГБ для остальных компьютеров.
+   Если загрузка прервётся — запустите `SnapReel.cmd` ещё раз: уже скачанные файлы сохранятся.
+   Если видеокарта не запустится (обычно из-за старого драйвера), SnapReel сам поставит версию
+   для процессора и подскажет, что обновить.
 4. Готово: на рабочем столе и в «Пуске» появится ярлык. При первом запуске SnapReel предложит
    по одной модели каждого вида, которые лучше всего подходят вашему компьютеру.
 
@@ -87,7 +89,22 @@ SnapReel запускает открытые ИИ-модели у вас на к
 | Bark small (озвучка) | 1.7 ГБ | медленно | отлично | отлично | отлично | отлично | отлично |
 
 Для 6 и 8 ГБ видеопамяти взято 16 ГБ оперативной памяти, для 12–16 ГБ — 32 ГБ, для 24 ГБ — 64 ГБ.
-Видеокарты: NVIDIA (CUDA). На компьютерах без NVIDIA SnapReel работает на процессоре.
+Таблица рассчитана для видеокарт NVIDIA и проверена на RTX 3060.
+
+**Поддерживаемые видеокарты:**
+
+| Видеокарта | Как работает | Драйвер |
+|---|---|---|
+| NVIDIA GeForce / RTX | CUDA | 580 или новее |
+| AMD Radeon RX 6000, RX 7000, RX 9000, Radeon PRO W6000/W7000 | ROCm | свежий AMD Adrenalin |
+| Встроенные Radeon 680M/660M, 780M/760M/740M, 890M/880M, 860M/840M, 8060S/8050S/8040S | ROCm | свежий AMD Adrenalin |
+| Intel Arc A/B (в том числе Pro) и встроенная графика Core Ultra (Arc Graphics, 130V/140V) | Intel XPU | свежий драйвер Intel Arc |
+| Apple Silicon (из исходников) | Metal | — |
+
+Остальные (Radeon RX 5000 и старше, Intel Iris Xe / UHD) не поддерживаются — модели работают на процессоре.
+Поддержка AMD и Intel проверена на имитации этих видеокарт: определение, установка компонентов и
+переход на процессор при старом драйвере. **На настоящих Radeon и Arc SnapReel пока не запускали** —
+если у вас такая видеокарта, напишите, как прошло.
 
 ### Где лежат файлы
 
@@ -102,8 +119,9 @@ SnapReel запускает открытые ИИ-модели у вас на к
 **Генерация идёт очень долго.** Посмотрите оценку под выбором модели. Если там «медленно» — модель
 не помещается в видеопамять; выберите модель полегче (SD Turbo, SDXL Turbo, CogVideoX 2B) или уменьшите размер.
 
-**Есть видеокарта NVIDIA, а SnapReel пишет «процессор».** Обновите драйвер NVIDIA (нужен 580 или новее)
-и нажмите «Установить GPU-версию PyTorch» в «Настройки → Этот компьютер».
+**Есть видеокарта, а SnapReel пишет «процессор».** Обновите драйвер видеокарты (для NVIDIA нужен 580
+или новее) и нажмите кнопку в «Настройки → Этот компьютер»: «Установить GPU-версию PyTorch» для NVIDIA
+или «Настроить SnapReel для …» для AMD и Intel.
 
 **Хочу свою модель.** «Модели → Добавить свою»: поиск по Hugging Face или свой файл `.safetensors` / папка
 diffusers. LoRA добавляются так же. Для моделей, которые встроенные движки не умеют запускать, есть
@@ -120,6 +138,9 @@ diffusers. LoRA добавляются так же. Для моделей, ко�
 git clone https://github.com/Rolo909/SnapReel.git
 cd SnapReel
 uv sync --extra cu130 --extra online   # NVIDIA; без видеокарты: --extra cpu
+# AMD Radeon RX 7000: uv sync --python 3.13 --extra rocm-gfx110x --extra online
+# Intel Arc:          uv sync --extra xpu --extra online
+# (какой extra нужен вашей видеокарте — в src/snapreel/data/gpu_support.json)
 uv run python -m snapreel
 ```
 
@@ -179,8 +200,10 @@ Nothing to install beforehand — no Python, no CUDA, no command line.
    If Windows shows "Windows protected your PC", click **More info → Run anyway**. This is a usual
    warning for free programs without a paid signature.
 3. The "Getting ready for the first start" window opens. SnapReel detects your graphics card and downloads
-   what it needs: about 3 GB for NVIDIA, about 1 GB for other computers. If the download is interrupted,
-   just start `SnapReel.cmd` again — it continues.
+   what it needs: about 3 GB for NVIDIA, 2.5 GB for AMD Radeon, 2 GB for Intel Arc, 1 GB for other computers.
+   If the download is interrupted, start `SnapReel.cmd` again: files already downloaded are kept. If the
+   graphics card does not start (usually an old driver), SnapReel installs the processor version by itself
+   and tells you what to update.
 4. Done: a shortcut appears on the desktop and in the Start menu. On the first start SnapReel suggests one
    model of each kind that suits your computer best.
 
@@ -194,7 +217,15 @@ The verdicts are those of the [table above](#какая-модель-подой�
 *отлично* = great, *хорошо* = good, *медленно* = slow, *очень медленно* = very slow, *нет* = won't run.
 Estimated for a 1024×1024 picture (SD Turbo and DreamShaper at their native 512/768) and the default clip
 length; 6–8 GB cards with 16 GB RAM, 12–16 GB with 32 GB, 24 GB with 64 GB. "Slow" usually means the model
-doesn't fit in video memory and SnapReel streams it. GPUs: NVIDIA (CUDA); other computers run on the CPU.
+doesn't fit in video memory and SnapReel streams it. The table is for NVIDIA cards (checked on an RTX 3060).
+
+**Supported graphics:** NVIDIA GeForce / RTX (CUDA, driver 580+); AMD Radeon RX 6000 / 7000 / 9000 and
+Radeon PRO W6000 / W7000 (ROCm); integrated Radeon 680M/660M, 780M/760M/740M, 890M/880M, 860M/840M,
+8060S/8050S/8040S (ROCm); Intel Arc A / B and Core Ultra integrated graphics (Intel XPU); Apple Silicon (from
+source). Older cards (Radeon RX 5000 and earlier, Intel Iris Xe / UHD) run on the processor. AMD and Intel
+support was checked on simulated cards — detection, installing the components and falling back to the
+processor with an old driver. **It has not been run on real Radeon or Arc cards yet** — if you have one,
+please tell how it went.
 
 ### Where files live
 
@@ -209,8 +240,9 @@ doesn't fit in video memory and SnapReel streams it. GPUs: NVIDIA (CUDA); other 
 **Generation is very slow.** Check the estimate under the model picker. "Slow" means the model doesn't fit in
 video memory: choose a lighter one (SD Turbo, SDXL Turbo, CogVideoX 2B) or a smaller size.
 
-**I have an NVIDIA card but SnapReel says "CPU".** Update the NVIDIA driver (580 or newer) and press
-"Install the GPU version of PyTorch" in Settings → This computer.
+**I have a graphics card but SnapReel says "CPU".** Update the graphics driver (NVIDIA needs 580 or newer)
+and press the button in Settings → This computer: "Install the GPU version of PyTorch" for NVIDIA or
+"Set up SnapReel for …" for AMD and Intel.
 
 **I want my own model.** Models → Add your own: search Hugging Face or pick a `.safetensors` file / diffusers folder.
 LoRAs are added the same way. For models the built-in engines can't run there are [plugins](docs/PLUGINS.md).
@@ -226,6 +258,9 @@ You need [uv](https://docs.astral.sh/uv/); it installs the right Python by itsel
 git clone https://github.com/Rolo909/SnapReel.git
 cd SnapReel
 uv sync --extra cu130 --extra online   # NVIDIA; without one: --extra cpu
+# AMD Radeon RX 7000: uv sync --python 3.13 --extra rocm-gfx110x --extra online
+# Intel Arc:          uv sync --extra xpu --extra online
+# (the extra for each card is in src/snapreel/data/gpu_support.json)
 uv run python -m snapreel
 ```
 

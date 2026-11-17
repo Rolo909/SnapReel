@@ -42,6 +42,9 @@ def open_window(app: QApplication, services: object, previous: object = None) ->
     from snapreel.i18n import set_language
 
     settings = services.settings
+    if previous is not None:
+        previous.save_pages()  # before the new pages read the settings
+        settings.save()
     theme.apply(app, settings.theme)
     set_language(settings.language)
     window = MainWindow(services, build_pages(services, None))

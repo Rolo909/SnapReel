@@ -79,3 +79,20 @@ def test_update_catalog_now(page: SettingsPage, qtbot, monkeypatch) -> None:
     page._update_catalog()
     qtbot.waitUntil(lambda: page.update_now.isEnabled(), timeout=3000)
     assert "21" in page.catalog_status.text()
+
+
+def test_amd_without_rocm_build_offers_setup(page: SettingsPage, monkeypatch) -> None:
+    rx = GpuInfo("AMD Radeon RX 7800 XT", "amd", 16.0, 16.0, flavor="rocm-gfx110x")
+    hw = Hardware("Windows 11", "Test CPU", 6, 12, 32.0, 20.0, 8.0, (rx,), TorchBuild(True, "2.15.0+cpu"))
+    monkeypatch.setattr(settings_module.hardware, "release_home", lambda: None)
+    page._show_hardware(hw)
+    assert not page.install_button.isHidden() and "RX 7800 XT" in page.install_button.text()
+    assert not page.install_button.isEnabled()  # from source: the command is shown instead
+    assert "--python 3.13 --extra rocm-gfx110x" in page.install_status.text()
+    monkeypatch.setattr(settings_module.hardware, "release_home", lambda: Path("C:/SnapReel"))
+    page._show_hardware(hw)
+    assert page.install_button.isEnabled()
+    rocm = Hardware("Windows 11", "Test CPU", 6, 12, 32.0, 20.0, 8.0, (rx,),
+                    TorchBuild(True, "2.11.0+rocm7.13.0", hip="7.13.0"))
+    page._show_hardware(rocm)
+    assert page.install_button.isHidden() and "ROCm 7.13.0" in page.hw_summary.text()

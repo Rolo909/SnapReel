@@ -89,7 +89,7 @@ class Upscaler:
         from safetensors.torch import load_file
 
         self.device = torch.device(device)
-        self.dtype = torch.float16 if (half and self.device.type == "cuda") else torch.float32
+        self.dtype = torch.float16 if (half and self.device.type in ("cuda", "xpu")) else torch.float32
         net = _build_net()
         net.load_state_dict(load_file(weights))
         self.net = net.eval().to(self.device, self.dtype)

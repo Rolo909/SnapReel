@@ -238,6 +238,11 @@ class MainWindow(QMainWindow):
         last = window.get("page")
         self.open_page(keys.index(last) if last in keys else 0)
 
+    def save_pages(self) -> None:
+        """Keep unsent input (prompts, texts) in the settings."""
+        for page in self.pages:
+            page.save_state()
+
     def retire(self) -> None:
         """Close this window without stopping the session (it is being replaced)."""
         self._retired = True
@@ -257,6 +262,7 @@ class MainWindow(QMainWindow):
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return
+        self.save_pages()
         self.services.settings.window = {
             "geometry": bytes(self.saveGeometry().toBase64().data()).decode(),
             "page": self.current_page().key,

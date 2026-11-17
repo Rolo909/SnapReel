@@ -1,0 +1,18 @@
+{
+  "_comment": "Which PyTorch build (an extra in pyproject.toml) runs on which AMD / Intel graphics. Read by core/hardware.py and by the Windows installer (packaging/windows/launcher.ps1). The first matching row wins; 'ids' are PCI device ids for adapters whose Windows name is generic. Adapters that match nothing run on the processor.",
+  "python": {"rocm": "3.13"},
+  "amd": [
+    {"flavor": "rocm-gfx120x", "integrated": false, "name": "\\bRX\\s*90[67]0|\\bR9[67]00\\b"},
+    {"flavor": "rocm-gfx110x", "integrated": false, "name": "\\bRX\\s*7[6-9]\\d0|\\bPRO\\s*W7[5-9]\\d0|\\bV710\\b"},
+    {"flavor": "rocm-gfx103x", "integrated": false, "name": "\\bRX\\s*6[4-9][05]0|\\bPRO\\s*W6[4-9]00"},
+    {"flavor": "rocm-gfx1151", "integrated": true, "name": "\\b80[456]0S\\b", "ids": ["1586"]},
+    {"flavor": "rocm-gfx1150", "integrated": true, "name": "\\b8[89]0M\\b", "ids": ["150E"]},
+    {"flavor": "rocm-gfx1152", "integrated": true, "name": "\\b8[46]0M\\b", "ids": ["1114"]},
+    {"flavor": "rocm-gfx110x", "integrated": true, "name": "\\b7[468]0M\\b", "ids": ["15BF", "15C8"]},
+    {"flavor": "rocm-gfx103x", "integrated": true, "name": "\\b6[68]0M\\b", "ids": ["1681"]}
+  ],
+  "intel": [
+    {"flavor": "xpu", "integrated": false, "name": "\\bArc(\\(TM\\))?\\s+(Pro\\s+)?[AB]\\d{2,3}"},
+    {"flavor": "xpu", "integrated": true, "name": "\\bArc\\b"}
+  ]
+}

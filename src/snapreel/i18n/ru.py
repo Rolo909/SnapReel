@@ -305,22 +305,25 @@ RU: dict[str, str] = {
     "Graphics: none found": "Видеокарта: не найдена",
     "{gb:.1f} GB of video memory": "видеопамять {gb:.1f} ГБ",
     "driver {version}": "драйвер {version}",
-    "with CUDA {version}": "с CUDA {version}",
-    "without CUDA": "без CUDA",
     "PyTorch: not installed": "PyTorch: не установлен",
     "Free space for models: {size}": "Свободно для моделей: {size}",
     "No problems found. SnapReel uses this computer to the full.":
         "Проблем не найдено. SnapReel использует этот компьютер в полную силу.",
     "PyTorch is not installed, so nothing can be generated. Reinstall SnapReel.":
         "PyTorch не установлен, поэтому генерация невозможна. Переустановите SnapReel.",
-    "PyTorch without NVIDIA graphics card support is installed: generation runs on the processor, tens of times slower.":
-        "Установлен PyTorch без поддержки видеокарт NVIDIA: генерация идёт на процессоре, в десятки раз медленнее.",
-    "{gpu} is not supported yet: SnapReel uses NVIDIA (CUDA) and Apple Silicon graphics. Models will run on the processor.":
-        "{gpu} пока не поддерживается: SnapReel работает с видеокартами NVIDIA (CUDA) и Apple Silicon. Модели будут работать на процессоре.",
     "No graphics card found: models will run on the processor. Prefer the lightest models.":
         "Видеокарта не найдена: модели будут работать на процессоре. Выбирайте самые лёгкие.",
     "Less than 16 GB of RAM: heavy models may not fit.":
         "Оперативной памяти меньше 16 ГБ: тяжёлые модели могут не поместиться.",
+    "PyTorch without support for this graphics card is installed: generation runs on the processor, tens of times slower.":
+        "Установлен PyTorch без поддержки этой видеокарты: генерация идёт на процессоре, в десятки раз медленнее.",
+    "{gpu} is not supported: SnapReel works with NVIDIA, AMD Radeon RX 6000 and newer, Intel Arc and Apple Silicon graphics. Models will run on the processor.":
+        "{gpu} не поддерживается: SnapReel работает с видеокартами NVIDIA, AMD Radeon RX 6000 и новее, Intel Arc и Apple Silicon. Модели будут работать на процессоре.",
+    "processor only": "только процессор",
+    "Set up SnapReel for {gpu}": "Настроить SnapReel для {gpu}",
+    "Running from source: install the build with\n{command}": "Запуск из исходников: установите сборку командой\n{command}",
+    "SnapReel closes, downloads the components for the graphics card (2–4 GB) and starts again. If the graphics driver is too old, it stays on the processor version — update the driver first.":
+        "SnapReel закроется, скачает компоненты для видеокарты (2–4 ГБ) и запустится снова. Если драйвер видеокарты слишком старый, останется версия для процессора — сначала обновите драйвер.",
     "Install the GPU version of PyTorch (about 3 GB)": "Установить GPU-версию PyTorch (около 3 ГБ)",
     "Download the SnapReel build for NVIDIA graphics cards from the project page.":
         "Скачайте сборку SnapReel для видеокарт NVIDIA со страницы проекта.",

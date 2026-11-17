@@ -14,6 +14,7 @@ from snapreel.engines.base import (
     Context,
     Engine,
     EngineError,
+    device_available,
     free_memory,
     quiet_libraries,
 )
@@ -48,7 +49,9 @@ def apply_plan(pipe: Any, plan: Plan) -> None:
                 # low_cpu_mem_usage pins tensors on the fly: pre-pinning a 9 GB text encoder
                 # fails on a 16 GB Windows machine (cuMemHostAlloc out of memory).
                 options = {"onload_device": device, "offload_device": torch.device("cpu"),
-                           "offload_type": "leaf_level", "use_stream": True, "low_cpu_mem_usage": True}
+                           "offload_type": "leaf_level", "low_cpu_mem_usage": True,
+                           # Overlapped transfers are tuned (and verified) for CUDA streams only.
+                           "use_stream": device.type == "cuda"}
                 if hasattr(component, "enable_group_offload"):
                     component.enable_group_offload(**options)
                 else:
@@ -87,10 +90,9 @@ class DiffusersEngine(Engine):
     def load(self, ctx: Context) -> None:
         ctx.progress(0.0, "import")
         import diffusers
-        import torch
 
         quiet_libraries()
-        if self.plan.device == "cuda" and not torch.cuda.is_available():
+        if not device_available(self.plan.device):
             raise EngineError("cuda_unavailable")
         path = self.model_path(ctx)
         dtype = torch_dtype(self.plan.dtype)

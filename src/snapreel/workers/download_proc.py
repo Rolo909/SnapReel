@@ -3,6 +3,11 @@
 Runs as ``python -m snapreel --download <task.json>`` so the GUI can cancel a
 multi-gigabyte download instantly by killing the process; partial files stay
 on disk and the next attempt resumes. Progress is reported as JSON lines.
+
+huggingface_hub (1.x) itself does not resume: it downloads every file into a temporary
+file with a random name and deletes it on failure (or leaves it behind when the process
+is killed). So large model files are fetched here with HTTP ranges into the cache's blob
+store first, and snapshot_download only lays out what is already on disk.
 """
 
 from __future__ import annotations
@@ -21,6 +26,8 @@ from typing import Any
 
 # Keep some space free after the download so the system and the app keep working.
 DISK_RESERVE = 512 * 1024**2
+# Files below this size are cheap to download again; larger ones are resumed.
+RESUME_FROM = 32 * 1024**2
 
 
 class DownloadError(Exception):
@@ -65,15 +72,76 @@ def _poll(path: Path, total: int, done_before: int, stop: threading.Event) -> No
 
 
 def _present_bytes(repo_dir: Path, plan: Any) -> int:
-    """Bytes of planned files already on disk: complete in a snapshot or partially downloaded."""
+    """Bytes of planned files already on disk: laid out in a snapshot, or in the blob store
+    (finished or partial). Symlinked snapshot entries are counted through their blobs."""
     sizes = dict(plan.sizes)
     found: dict[str, int] = {}
     for snapshot in (repo_dir / "snapshots").glob("*"):
         for name, size in sizes.items():
-            if name not in found and (snapshot / name).is_file():
+            entry = snapshot / name
+            if name not in found and entry.is_file() and not entry.is_symlink():
                 found[name] = size
-    partial = sum(_size(p) for p in (repo_dir / "blobs").glob("*.incomplete"))
-    return min(plan.total_bytes, sum(found.values()) + partial)
+    stored = sum(_size(p) for p in (repo_dir / "blobs").glob("*") if p.suffix != ".incomplete")
+    return min(plan.total_bytes, sum(found.values()) + stored)
+
+
+def _drop_stale_temp_files(repo_dir: Path) -> None:
+    """huggingface_hub's temporary files of killed attempts: unique names, never reused."""
+    for stale in (repo_dir / "blobs").glob("*.incomplete"):
+        try:
+            stale.unlink()
+        except OSError:
+            pass  # another process may still be writing it
+
+
+def _fetch(url: str, partial: Path, size: int) -> None:
+    """Download ``url`` into ``partial``, continuing from what is already there."""
+    have = _size(partial)
+    if size and have >= size:
+        return
+    request = urllib.request.Request(url, headers={"User-Agent": "SnapReel"})
+    if have:
+        request.add_header("Range", f"bytes={have}-")
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if have and response.status != 206:
+            have = 0  # the server ignored the range: start over
+        with open(partial, "ab" if have else "wb") as handle:
+            while chunk := response.read(1 << 18):
+                handle.write(chunk)
+                have += len(chunk)
+    if size and have != size:
+        raise ConnectionError(f"connection closed at {have} of {size} bytes")
+
+
+def _prefetch_large_files(repo: str, plan: Any, repo_dir: Path, token: str | None) -> None:
+    """Resumably put the large files of ``plan`` into the blob store."""
+    from huggingface_hub import get_hf_file_metadata, hf_hub_url
+
+    blobs = repo_dir / "blobs"
+    blobs.mkdir(parents=True, exist_ok=True)
+    for name in plan.files:
+        if plan.sizes.get(name, 0) < RESUME_FROM:
+            continue
+        meta = get_hf_file_metadata(hf_hub_url(repo, name), token=token)
+        if not meta.etag or not meta.location:
+            continue
+        blob = blobs / meta.etag
+        laid_out = bool(meta.commit_hash) and (repo_dir / "snapshots" / str(meta.commit_hash) / name).exists()
+        if blob.exists() or laid_out:
+            continue
+        partial = blob.with_name(blob.name + ".part")
+        _fetch(meta.location, partial, int(meta.size or 0))
+        partial.replace(blob)
+
+
+def _drop_duplicate_blobs(repo_dir: Path) -> None:
+    """Without symlink rights huggingface_hub copies a blob that already existed into the snapshot;
+    the blob is then a second copy of the model file. (With symlinks the snapshot points at it.)"""
+    copies = {f.stat().st_size for f in (repo_dir / "snapshots").rglob("*")
+              if f.is_file() and not f.is_symlink()}
+    for blob in (repo_dir / "blobs").glob("*"):
+        if not blob.suffix and blob.is_file() and _size(blob) in copies:
+            blob.unlink(missing_ok=True)
 
 
 def _download_hf(task: dict[str, Any]) -> dict[str, Any]:
@@ -87,19 +155,22 @@ def _download_hf(task: dict[str, Any]) -> dict[str, Any]:
     if not plan.files:
         raise RuntimeError("repository has no downloadable model files")
     repo_dir = Path(task["hub_dir"]) / f"models--{task['repo'].replace('/', '--')}"
+    _drop_stale_temp_files(repo_dir)
     present = _present_bytes(repo_dir, plan)
     check_disk(repo_dir, plan.total_bytes - present)
-    emit("plan", total=plan.total_bytes, files=len(plan.files), variant=plan.variant)
+    emit("plan", total=plan.total_bytes, done=present, files=len(plan.files), variant=plan.variant)
 
     stop = threading.Event()
     watcher = threading.Thread(target=_poll, args=(repo_dir, plan.total_bytes, present, stop),
                                daemon=True)
     watcher.start()
     try:
+        _prefetch_large_files(task["repo"], plan, repo_dir, token)
         path = snapshot_download(
             task["repo"], cache_dir=task["hub_dir"], allow_patterns=plan.files, token=token,
             max_workers=4,
         )
+        _drop_duplicate_blobs(repo_dir)
     finally:
         stop.set()
     return {"path": path, "variant": plan.variant, "bytes": plan.total_bytes,
@@ -117,7 +188,7 @@ def _download_urls(task: dict[str, Any]) -> dict[str, Any]:
     total = sum(int(f.get("size") or 0) for f in files)
     present = sum(_size(dest / f["name"]) + _size(dest / f"{f['name']}.part") for f in files)
     check_disk(dest, total - present)
-    emit("plan", total=total, files=len(files), variant=None)
+    emit("plan", total=total, done=present, files=len(files), variant=None)
     done_before = 0
     for item in files:
         target = dest / item["name"]

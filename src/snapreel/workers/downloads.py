@@ -123,7 +123,8 @@ class DownloadManager(QObject):
                 continue
             kind = event.get("event")
             if kind == "plan":
-                item.update(item.done, int(event.get("total") or 0))
+                item.update(int(event.get("done") or item.done), int(event.get("total") or 0))
+                item._mark = (time.monotonic(), item.done)  # bytes already on disk are not speed
             elif kind == "progress":
                 item.update(int(event.get("done") or 0), int(event.get("total") or 0))
             elif kind == "error":

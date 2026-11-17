@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from PySide6.QtCore import QProcess, QProcessEnvironment, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -60,10 +61,11 @@ def issue_text(code: str, hw: Hardware) -> str:
     gpu = hw.gpus[0].name if hw.gpus else ""
     return {
         "torch_missing": tr("PyTorch is not installed, so nothing can be generated. Reinstall SnapReel."),
-        "torch_cpu_build": tr("PyTorch without NVIDIA graphics card support is installed: generation runs on "
-                              "the processor, tens of times slower."),
-        "gpu_unsupported": tr("{gpu} is not supported yet: SnapReel uses NVIDIA (CUDA) and Apple Silicon "
-                              "graphics. Models will run on the processor.", gpu=gpu),
+        "torch_cpu_build": tr("PyTorch without support for this graphics card is installed: generation "
+                              "runs on the processor, tens of times slower."),
+        "gpu_unsupported": tr("{gpu} is not supported: SnapReel works with NVIDIA, AMD Radeon RX 6000 "
+                              "and newer, Intel Arc and Apple Silicon graphics. Models will run on the "
+                              "processor.", gpu=gpu),
         "no_gpu": tr("No graphics card found: models will run on the processor. Prefer the lightest models."),
         "low_ram": tr("Less than 16 GB of RAM: heavy models may not fit."),
     }.get(code, code)
@@ -201,7 +203,7 @@ class SettingsPage(Page):
             lines.append(tr("Graphics: none found"))
         torch = hw.torch
         if torch.installed:
-            build = tr("with CUDA {version}", version=torch.cuda) if torch.has_cuda else tr("without CUDA")
+            build = torch.label or tr("processor only")
             lines.append(f"PyTorch {torch.version} · {build}")
         else:
             lines.append(tr("PyTorch: not installed"))
@@ -222,7 +224,9 @@ class SettingsPage(Page):
             self.diagnostics.addWidget(label(issue_text(code, hw), "warn" if severe else "muted", wrap=True))
         cpu_build = "torch_cpu_build" in issues
         self.install_button.setVisible(cpu_build)
-        if cpu_build and not can_install_gpu_torch():
+        if cpu_build and hw.gpu is not None and hw.gpu.vendor in ("amd", "intel"):
+            self._offer_gpu_setup(hw)
+        elif cpu_build and not can_install_gpu_torch():
             self.install_button.setEnabled(False)
             self.install_status.setVisible(True)
             self.install_status.setText(
@@ -231,7 +235,32 @@ class SettingsPage(Page):
                 tr("PyTorch is already loaded in this session. Restart SnapReel and press the button "
                    "before creating anything."))
 
+    def _offer_gpu_setup(self, hw: Hardware) -> None:
+        """AMD / Intel builds need their own Python environment: the installer rebuilds it."""
+        assert hw.gpu is not None
+        self.install_button.setText(tr("Set up SnapReel for {gpu}", gpu=hw.gpu.name))
+        if hardware.release_home() is None:
+            self.install_button.setEnabled(False)
+            self.install_status.setVisible(True)
+            self.install_status.setText(tr("Running from source: install the build with\n{command}",
+                                           command=hardware.setup_command(hw.gpu)))
+        else:
+            self.install_button.setEnabled(True)
+            self.install_status.setVisible(True)
+            self.install_status.setText(tr("SnapReel closes, downloads the components for the graphics card "
+                                           "(2–4 GB) and starts again. If the graphics driver is too old, "
+                                           "it stays on the processor version — update the driver first."))
+
     def _install_gpu_torch(self) -> None:
+        hw = self.services.hardware
+        home = hardware.release_home()
+        if hw is not None and hw.gpu is not None and hw.gpu.vendor in ("amd", "intel"):
+            if home is not None:
+                command = hardware.reinstall_command(home)
+                log.info("reinstalling for %s: %s", hw.gpu.name, " ".join(command))
+                if QProcess.startDetached(command[0], command[1:]):
+                    QApplication.quit()
+            return
         if not can_install_gpu_torch() or self._install is not None:
             return
         command, extra_env = hardware.cuda_install_command()

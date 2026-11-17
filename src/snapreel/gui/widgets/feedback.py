@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import shiboken6
 from PySide6.QtCore import QEasingCurve, QEvent, QObject, QPropertyAnimation, Qt, QTimer
 from PySide6.QtWidgets import QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QPushButton, QWidget
 
@@ -91,7 +92,8 @@ class ToastHost(QObject):
     def _forget(self, toast: Toast) -> None:
         if toast in self._toasts:
             self._toasts.remove(toast)
-        self._layout()
+        if shiboken6.isValid(self._window):  # toasts also die with their window (quit, rebuild)
+            self._layout()
 
     def _layout(self) -> None:
         y = self._window.height() - 16

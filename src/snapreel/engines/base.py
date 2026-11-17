@@ -100,11 +100,26 @@ def free_memory() -> None:
     try:
         import torch
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available():  # NVIDIA and AMD (ROCm)
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
+        if hasattr(torch, "xpu") and torch.xpu.is_available():  # Intel
+            torch.xpu.empty_cache()
     except Exception:  # noqa: BLE001 - best effort; torch may be absent or mid-teardown
         pass
+
+
+def device_available(device: str) -> bool:
+    """Can PyTorch use this device right now? ("cuda" also covers AMD ROCm builds.)"""
+    import torch
+
+    if device == "cuda":
+        return bool(torch.cuda.is_available())
+    if device == "xpu":
+        return hasattr(torch, "xpu") and bool(torch.xpu.is_available())
+    if device == "mps":
+        return bool(torch.backends.mps.is_available())
+    return True
 
 
 def is_oom(exc: BaseException) -> bool:

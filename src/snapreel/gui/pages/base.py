@@ -34,6 +34,9 @@ class Page(QWidget):
     def shown(self) -> None:
         """Called every time the page becomes visible."""
 
+    def save_state(self) -> None:
+        """Keep what was typed but not sent: the window is about to close or be rebuilt."""
+
     def focus_widget(self) -> QWidget:
         """Where typing should go when the page opens (the prompt, the text…)."""
         for name in ("prompt", "text"):

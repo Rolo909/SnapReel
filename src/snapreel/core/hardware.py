@@ -32,6 +32,12 @@ class GpuInfo:
     vram_total_gb: float
     vram_free_gb: float
     driver: str = ""
+    flavor: str = ""  # PyTorch build (pyproject extra) for an AMD / Intel GPU; "" = not supported
+    integrated: bool = False  # shares system RAM
+
+    @property
+    def supported(self) -> bool:
+        return self.vendor in ("nvidia", "apple") or bool(self.flavor)
 
 
 @dataclass(frozen=True)
@@ -39,10 +45,22 @@ class TorchBuild:
     installed: bool = False
     version: str = ""
     cuda: str = ""  # CUDA runtime version the wheel was built with, "" for CPU builds
+    hip: str = ""  # ROCm (AMD) build
+    xpu: str = ""  # Intel GPU build
 
     @property
     def has_cuda(self) -> bool:
         return bool(self.cuda)
+
+    @property
+    def backend(self) -> str:
+        """One of "cuda", "rocm", "xpu", or "" for a processor-only build."""
+        return "cuda" if self.cuda else "rocm" if self.hip else "xpu" if self.xpu else ""
+
+    @property
+    def label(self) -> str:
+        names = {"cuda": f"CUDA {self.cuda}", "rocm": f"ROCm {self.hip}", "xpu": "Intel XPU"}
+        return names.get(self.backend, "")
 
 
 @dataclass(frozen=True)
@@ -59,9 +77,11 @@ class Hardware:
 
     @property
     def gpu(self) -> GpuInfo | None:
-        """The GPU generation will run on: the largest one PyTorch can use."""
-        usable = [g for g in self.gpus if g.vendor in ("nvidia", "apple")]
-        return max(usable, key=lambda g: g.vram_total_gb) if usable else None
+        """The GPU generation will run on: the best one PyTorch can use (discrete before integrated)."""
+        usable = [g for g in self.gpus if g.supported]
+        rank = {"nvidia": 3, "apple": 3, "amd": 2, "intel": 1}
+        return max(usable, key=lambda g: (not g.integrated, rank.get(g.vendor, 0), g.vram_total_gb),
+                   default=None)
 
     @property
     def device(self) -> str:
@@ -71,7 +91,10 @@ class Hardware:
             return "cpu"
         if gpu.vendor == "apple":
             return "mps"
-        return "cuda" if self.torch.has_cuda else "cpu"
+        needed = {"nvidia": "cuda", "amd": "rocm", "intel": "xpu"}.get(gpu.vendor)
+        if needed is None or needed != self.torch.backend:
+            return "cpu"
+        return "xpu" if needed == "xpu" else "cuda"  # ROCm builds expose AMD GPUs as "cuda"
 
     @property
     def issues(self) -> list[str]:
@@ -79,7 +102,7 @@ class Hardware:
         out: list[str] = []
         if not self.torch.installed:
             out.append("torch_missing")
-        elif any(g.vendor == "nvidia" for g in self.gpus) and not self.torch.has_cuda:
+        elif self.gpu is not None and self.gpu.vendor != "apple" and self.device == "cpu":
             out.append("torch_cpu_build")
         if self.gpus and self.gpu is None:
             out.append("gpu_unsupported")
@@ -98,8 +121,7 @@ def detect() -> Hardware:
     except (OSError, RuntimeError):
         swap = 0.0
     gpus = _nvidia_gpus()
-    if not gpus:
-        gpus = _apple_gpu(mem.total / GB) or _other_gpus()
+    gpus += _apple_gpu(mem.total / GB) or _other_gpus(mem.total / GB, skip_nvidia=bool(gpus))
     hw = Hardware(
         os_name=f"{platform.system()} {platform.release()}",
         cpu_name=_cpu_name(),
@@ -119,7 +141,25 @@ def free_memory() -> tuple[float, float | None]:
     """Cheap live reading: (free RAM GB, free VRAM GB or None)."""
     ram = psutil.virtual_memory().available / GB
     gpus = _nvidia_gpus()
-    return ram, (gpus[0].vram_free_gb if gpus else None)
+    if gpus:
+        return ram, gpus[0].vram_free_gb
+    return ram, _torch_free_vram()
+
+
+def _torch_free_vram() -> float | None:
+    """AMD / Intel have no NVML: ask PyTorch, but only once it is loaded anyway (it is slow to import)."""
+    torch = sys.modules.get("torch")
+    if torch is None:
+        return None
+    try:
+        if torch.cuda.is_available():
+            return torch.cuda.mem_get_info()[0] / GB
+        xpu = getattr(torch, "xpu", None)
+        if xpu is not None and xpu.is_available():
+            return xpu.mem_get_info()[0] / GB
+    except Exception:  # noqa: BLE001 - the reading is optional; any backend error means "unknown"
+        pass
+    return None
 
 
 def disk_free_gb(path: Path) -> float:
@@ -143,9 +183,12 @@ def torch_build() -> TorchBuild:
         text = (Path(spec.origin).parent / "version.py").read_text(encoding="utf-8")
     except OSError:
         return TorchBuild(installed=True)
-    version = re.search(r"__version__\s*=\s*['\"]([^'\"]+)", text)
-    cuda = re.search(r"^cuda[^=\n]*=\s*['\"]([^'\"]+)", text, re.MULTILINE)
-    return TorchBuild(True, version.group(1) if version else "", cuda.group(1) if cuda else "")
+
+    def value(name: str) -> str:
+        found = re.search(rf"^{name}\b[^=\n]*=\s*['\"]([^'\"]+)", text, re.MULTILINE)
+        return found.group(1) if found else ""
+
+    return TorchBuild(True, value("__version__"), value("cuda"), value("hip"), value("xpu"))
 
 
 CUDA_INDEX = "https://download.pytorch.org/whl/cu130"
@@ -174,6 +217,20 @@ def cuda_install_command() -> tuple[list[str], dict[str, str]]:
                 {"UV_CACHE_DIR": str(home / "runtime" / "cache")})
     return ([python, "-m", "pip", "install", "--upgrade", "--force-reinstall", "--no-deps", "torch",
              "--index-url", CUDA_INDEX], {})
+
+
+def setup_command(gpu: GpuInfo) -> str:
+    """The command that installs the PyTorch build for an AMD / Intel GPU when running from source."""
+    python = gpu_table().get("python", {}).get("rocm", "3.13") if gpu.flavor.startswith("rocm") else ""
+    pin = f"--python {python} " if python else ""
+    return f"uv sync {pin}--extra {gpu.flavor} --extra online"
+
+
+def reinstall_command(home: Path) -> list[str]:
+    """Re-run the release installer once this process has exited: it picks the build for the GPU."""
+    script = home / "app" / "setup" / "launcher.ps1"
+    return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden",
+            "-File", str(script), "-Reinstall", "-WaitPid", str(os.getpid())]
 
 
 # ----------------------------------------------------------------------
@@ -229,29 +286,101 @@ def _apple_gpu(ram_gb: float) -> list[GpuInfo]:
     return []
 
 
-def _other_gpus() -> list[GpuInfo]:
-    """Name non-NVIDIA adapters so the UI can explain why they are not used."""
+@dataclass(frozen=True)
+class Adapter:
+    """A display adapter as Windows lists it."""
+
+    name: str
+    vendor_id: str = ""  # PCI vendor, e.g. "1002"
+    device_id: str = ""  # PCI device, e.g. "744C"
+    memory_bytes: int = 0  # dedicated video memory
+    driver: str = ""
+
+
+VENDORS = {"10DE": "nvidia", "1002": "amd", "1022": "amd", "8086": "intel"}
+
+
+def gpu_table() -> dict:
+    """The AMD / Intel support table, shared with the Windows installer."""
+    path = Path(__file__).resolve().parent.parent / "data" / "gpu_support.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def classify(adapter: Adapter, ram_gb: float, table: dict | None = None) -> GpuInfo | None:
+    """Turn a Windows adapter into a GpuInfo; None for software and virtual adapters."""
+    name = adapter.name.strip()
+    low = name.lower()
+    if not name or any(word in low for word in ("basic", "virtual", "remote", "parsec", "indirect")):
+        return None
+    vendor = VENDORS.get(adapter.vendor_id.upper()) or (
+        "nvidia" if "nvidia" in low else "amd" if ("amd" in low or "radeon" in low)
+        else "intel" if "intel" in low else "other")
+    flavor, integrated = "", False
+    for row in (table or gpu_table()).get(vendor, []):
+        if adapter.device_id.upper() in row.get("ids", ()) or re.search(row["name"], name, re.IGNORECASE):
+            flavor, integrated = row["flavor"], bool(row["integrated"])
+            break
+    vram = adapter.memory_bytes / GB
+    if integrated:
+        # Windows lets an integrated GPU use up to half of the RAM on top of its own reserve.
+        vram = max(vram, ram_gb / 2)
+    return GpuInfo(name, vendor, vram, vram, adapter.driver, flavor, integrated)
+
+
+def _other_gpus(ram_gb: float, skip_nvidia: bool = False) -> list[GpuInfo]:
+    """AMD / Intel (and unknown) adapters, read from the registry: they have no NVML."""
+    out = []
+    for adapter in _windows_adapters():
+        gpu = classify(adapter, ram_gb)
+        if gpu is not None and not (skip_nvidia and gpu.vendor == "nvidia"):
+            out.append(gpu)
+    return out
+
+
+DISPLAY_CLASS = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
+ADAPTER_VALUES = ("DriverDesc", "MatchingDeviceId", "DriverVersion",
+                  "HardwareInformation.qwMemorySize", "HardwareInformation.MemorySize")
+
+
+def _windows_adapters() -> list[Adapter]:
     if sys.platform != "win32":
         return []
-    raw = _run([
-        "powershell", "-NoProfile", "-NonInteractive", "-Command",
-        "Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM | ConvertTo-Json",
-    ])
+    import winreg
+
+    out: list[Adapter] = []
     try:
-        items = json.loads(raw) if raw.strip() else []
-    except ValueError:
-        return []
-    if isinstance(items, dict):
-        items = [items]
-    out = []
-    for item in items:
-        name = str(item.get("Name") or "").strip()
-        if not name or "basic" in name.lower() or "virtual" in name.lower():
-            continue
-        low = name.lower()
-        vendor = "amd" if ("amd" in low or "radeon" in low) else "intel" if "intel" in low else "other"
-        vram = max(0, int(item.get("AdapterRAM") or 0)) / GB
-        out.append(GpuInfo(name, vendor, vram, vram))
+        root = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, DISPLAY_CLASS)
+    except OSError:
+        return out
+    with root:
+        index = 0
+        while True:
+            try:
+                name = winreg.EnumKey(root, index)
+            except OSError:
+                break
+            index += 1
+            if not name.isdigit():
+                continue
+            values: dict[str, object] = {}
+            try:
+                with winreg.OpenKey(root, name) as key:
+                    for value in ADAPTER_VALUES:
+                        try:
+                            values[value] = winreg.QueryValueEx(key, value)[0]
+                        except OSError:
+                            continue
+            except OSError:
+                continue
+            ids = re.search(r"ven_([0-9a-f]{4}).*?dev_([0-9a-f]{4})", str(values.get("MatchingDeviceId", "")),
+                            re.IGNORECASE)
+            memory = (values.get("HardwareInformation.qwMemorySize")
+                      or values.get("HardwareInformation.MemorySize"))
+            if isinstance(memory, bytes):
+                memory = int.from_bytes(memory[:8], "little")
+            out.append(Adapter(str(values.get("DriverDesc", "")), ids.group(1) if ids else "",
+                               ids.group(2) if ids else "", int(memory or 0),
+                               str(values.get("DriverVersion", ""))))
     return out
 
 
