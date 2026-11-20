@@ -22,7 +22,8 @@ from PySide6.QtWidgets import (
 from tvorka.core.catalog import ModelSpec
 from tvorka.core.jobs import Job
 from tvorka.engines.media import AUDIO_FORMATS
-from tvorka.gui import icons
+from tvorka.gui import handoff, icons
+from tvorka.gui.handoff import Asset, Route
 from tvorka.gui.pages.base import Page
 from tvorka.gui.pages.gallery import show_in_folder
 from tvorka.gui.services import Services
@@ -74,6 +75,9 @@ class AudioRow(QFrame):
         save.clicked.connect(self._save_as)
         folder = tool_button("folder", tr("Show in folder"))
         folder.clicked.connect(lambda: show_in_folder(self.path))
+        send = tool_button("link", tr("Send to…"))
+        send.clicked.connect(lambda: page.send_menu(handoff.from_result(result, "speech"), send))
+        bottom.addWidget(send)
         bottom.addWidget(save)
         bottom.addWidget(folder)
         layout.addLayout(bottom)
@@ -249,6 +253,17 @@ class SpeechPage(Page):
         self.model_box.setCurrentIndex(max(0, self.model_box.findData(current)))
         self.model_box.blockSignals(False)
         self._model_selected(self.model_box.currentIndex())
+
+    # ============================================================ handoff (gui/handoff.py)
+    def routes(self, asset: Asset) -> list[Route]:
+        if asset.kind == "text" and asset.text.strip():
+            return [Route("speech", "text", tr("Read aloud"))]
+        return []
+
+    def receive(self, asset: Asset, role: str) -> None:
+        if role == "text":
+            self.text.setPlainText(asset.text.strip())
+            self.text.setFocus()
 
     def voice_name(self, model_id: str, voice_id: str) -> str:
         spec = self.services.catalog.get(model_id)

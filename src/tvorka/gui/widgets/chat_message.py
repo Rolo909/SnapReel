@@ -109,8 +109,10 @@ class MessageView(QWidget):
         buttons = [("copy", "copy", tr("Copy"))]
         if message.role == "user":
             buttons.append(("edit", "edit", tr("Edit and send again")))
-        elif last:
-            buttons.append(("regenerate", "refresh", tr("Answer again")))
+        else:
+            buttons.append(("send", "link", tr("Send to… (draw it, make a video, read aloud)")))
+            if last:
+                buttons.append(("regenerate", "refresh", tr("Answer again")))
         self.buttons = []
         for name, glyph, tip in buttons:
             button = tool_button(glyph, tip)

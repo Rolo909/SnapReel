@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QCloseEvent, QDesktopServices, QFont, QKeySequence, QShortcut
+from PySide6.QtCore import QByteArray, QEvent, QObject, QPoint, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QCloseEvent, QCursor, QDesktopServices, QFont, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
     QHBoxLayout,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QStackedWidget,
@@ -18,7 +19,8 @@ from PySide6.QtWidgets import (
 
 from tvorka import __version__
 from tvorka.core import hardware
-from tvorka.gui import icons, theme
+from tvorka.gui import handoff, icons, theme
+from tvorka.gui.handoff import Asset, Route
 from tvorka.gui.pages.base import Page
 from tvorka.gui.services import Services
 from tvorka.gui.widgets.basic import caption, label, rule, tool_button
@@ -88,6 +90,8 @@ class MainWindow(QMainWindow):
             button.setIconSize(QSize(18, 18))
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setToolTip(f"{page.title()} · Ctrl+{index + 1}")
+            button.setAcceptDrops(True)  # drop a file on a section to hand it over
+            button.installEventFilter(self)
             self._buttons.addButton(button, index)
             nav.addWidget(button)
         self._buttons.idClicked.connect(self.open_page)
@@ -251,6 +255,51 @@ class MainWindow(QMainWindow):
 
     def _generate(self) -> None:
         self.current_page().generate()
+
+    # --- passing work between sections (gui/handoff.py) -------------------------------
+    def routes_for(self, asset: Asset) -> list[Route]:
+        return [route for page in self.pages for route in page.routes(asset)]
+
+    def send(self, asset: Asset, route: Route) -> None:
+        page = self.page(route.page)
+        if page is None:
+            return
+        self.open_page(self.pages.index(page))
+        page.receive(asset, route.role)
+
+    def send_menu(self, asset: Asset, anchor: object = None, routes: list[Route] | None = None) -> None:
+        """"Send to…": every section that can take ``asset``, under ``anchor`` or at the cursor."""
+        routes = self.routes_for(asset) if routes is None else routes
+        if not routes:
+            self.toasts.show(tr("No section can take this yet."), "info")
+            return
+        menu = QMenu(self)
+        for route in routes:
+            page = self.page(route.page)
+            action = menu.addAction(icons.icon(page.icon if page else route.icon), route.label)
+            action.triggered.connect(lambda _=False, r=route: self.send(asset, r))
+        widget = anchor if hasattr(anchor, "mapToGlobal") else None
+        menu.exec(widget.mapToGlobal(QPoint(0, widget.height())) if widget is not None else QCursor.pos())
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        """A file dropped on a section button: that section takes it (asks how, if it can in several ways)."""
+        index = self._buttons.id(watched) if watched in self._buttons.buttons() else -1
+        if index < 0 or event.type() not in (QEvent.Type.DragEnter, QEvent.Type.Drop):
+            return super().eventFilter(watched, event)
+        mime = event.mimeData()
+        files = [url.toLocalFile() for url in mime.urls() if url.isLocalFile()] if mime.hasUrls() else []
+        asset = handoff.from_path(files[0]) if files else None
+        routes = self.pages[index].routes(asset) if asset is not None else []
+        if not routes:
+            return True  # not accepted: the cursor says so
+        event.acceptProposedAction()
+        if event.type() == QEvent.Type.Drop:
+            if len(routes) == 1:
+                self.send(asset, routes[0])
+            else:
+                self.open_page(index)
+                self.send_menu(asset, routes=routes)
+        return True
 
     # --- state -------------------------------------------------------------------------
     def _restore(self) -> None:

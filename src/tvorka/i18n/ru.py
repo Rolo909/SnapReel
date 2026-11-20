@@ -134,7 +134,6 @@ RU: dict[str, str] = {
     "Send to Video as the first frame": "Отправить в «Видео» как первый кадр",
     "seed": "сид",
     "Image copied": "Изображение скопировано",
-    "The Video page is not available yet.": "Раздел «Видео» пока недоступен.",
     # --- redesign: window, image page, settings -----------------------------------
     "Local AI studio": "Локальная ИИ-студия",
     "In memory: {name}": "В памяти: {name}",
@@ -638,4 +637,25 @@ RU: dict[str, str] = {
     # --- video memory -------------------------------------------------------------------
     "Stop the chat model and free memory": "Остановить чат-модель и освободить память",
     "Chat: {name}": "Чат: {name}",
+    # --- passing work between sections -------------------------------------------------
+    "No section can take this yet.": "Это пока некуда отправить.",
+    "Ask about it in the chat": "Спросить в чате",
+    "Discuss in the chat": "Обсудить в чате",
+    "Send to…": "Отправить в…",
+    "Made from: {kind} “{prompt}”": "Создано из: {kind} «{prompt}»",
+    "Made from a chat answer": "Создано из ответа в чате",
+    "Use as a reference": "Использовать как референс",
+    "Draw this": "Нарисовать",
+    "Continue the clip: its last frame starts a new one":
+        "Продолжить ролик: его последний кадр станет первым кадром нового",
+    "This frame to the Image page as a reference": "Этот кадр — референсом на страницу «Изображение»",
+    "Adding the voice-over…": "Накладываем озвучку…",
+    "Make a video from it": "Сделать из неё видео",
+    "Continue the clip": "Продолжить ролик",
+    "Make a video of this": "Сделать видео",
+    "Lay over the current clip": "Наложить на текущий ролик",
+    "The voice-over could not be added: {error}": "Не удалось наложить озвучку: {error}",
+    "Drag the picture to another section or out of Tvorka":
+        "Перетащите картинку в другой раздел или за пределы Tvorka",
+    "Send to… (draw it, make a video, read aloud)": "Отправить в… (нарисовать, сделать видео, озвучить)",
 }

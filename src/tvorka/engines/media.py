@@ -173,3 +173,80 @@ def peaks(samples: np.ndarray, buckets: int) -> np.ndarray:
                     for a, b in pairwise(edges)], dtype=np.float32)
     top = float(out.max())
     return out / top if top > 0 else out
+
+
+# ------------------------------------------------------------------ frames and voice-over for videos
+def video_frame(path: Path, seconds: float | None = None) -> Image.Image:
+    """The frame shown at ``seconds`` (the last one when None), as a picture."""
+    import av
+
+    with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        last = None
+        if seconds is not None and stream.time_base:
+            container.seek(int(max(0.0, seconds) / stream.time_base), stream=stream)
+        for frame in container.decode(stream):
+            last = frame
+            if seconds is not None and frame.time is not None and frame.time >= seconds - 0.001:
+                break
+    if last is None:
+        raise ValueError(f"{path.name}: no frames")
+    return last.to_image()
+
+
+def read_video(path: Path) -> tuple[np.ndarray, float]:
+    """All frames (RGB) and the frame rate; for short generated clips."""
+    import av
+
+    with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        fps = float(stream.average_rate or stream.guessed_rate or 24)
+        frames = [frame.to_ndarray(format="rgb24") for frame in container.decode(stream)]
+    if not frames:
+        raise ValueError(f"{path.name}: no frames")
+    return np.stack(frames), fps
+
+
+def mux_audio(video: Path, audio: Path, out: Path) -> float:
+    """Lay ``audio`` over ``video`` as a new MP4; returns its length in seconds.
+
+    When the speech is longer, the picture holds its last frame until the speech ends;
+    when it is shorter, the rest is silent.
+    """
+    import math
+
+    import av
+
+    frames, fps = read_video(video)
+    samples, rate = read_audio(audio, rate=48_000)
+    seconds = max(len(frames) / fps, samples.size / rate)
+    total = math.ceil(seconds * fps)
+    if total > len(frames):
+        frames = np.concatenate([frames, np.repeat(frames[-1:], total - len(frames), axis=0)])
+    samples = np.pad(samples, (0, max(0, round(seconds * rate) - samples.size)))
+    height, width = frames.shape[1] // 2 * 2, frames.shape[2] // 2 * 2
+    with av.open(str(out), "w") as container:
+        picture = container.add_stream("libx264", rate=Fraction(fps).limit_denominator(1001))
+        picture.width, picture.height, picture.pix_fmt = width, height, "yuv420p"
+        picture.options = {"crf": "18", "preset": "medium"}
+        try:
+            sound = container.add_stream("aac", rate=rate)
+        except ValueError:  # UnknownCodecError: an FFmpeg build without AAC; MP3 also plays in MP4
+            sound = container.add_stream("libmp3lame", rate=rate)
+        sound.layout = "mono"
+        for frame in frames:
+            for packet in picture.encode(av.VideoFrame.from_ndarray(
+                    np.ascontiguousarray(frame[:height, :width]), format="rgb24")):
+                container.mux(packet)
+        for packet in picture.encode():
+            container.mux(packet)
+        resampler = av.AudioResampler(format=sound.format, layout="mono", rate=rate)
+        chunk = av.AudioFrame.from_ndarray(np.clip(samples, -1, 1).astype(np.float32).reshape(1, -1),
+                                           format="flt", layout="mono")
+        chunk.sample_rate = rate
+        for piece in [*resampler.resample(chunk), *resampler.resample(None)]:
+            for packet in sound.encode(piece):
+                container.mux(packet)
+        for packet in sound.encode():
+            container.mux(packet)
+    return seconds

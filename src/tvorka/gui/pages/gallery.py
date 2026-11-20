@@ -5,11 +5,10 @@ from __future__ import annotations
 import os
 import subprocess
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl
+from PySide6.QtCore import QMimeData, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -26,11 +25,11 @@ from PySide6.QtWidgets import (
 )
 
 from tvorka.core.jobs import Result
-from tvorka.gui import icons, theme
+from tvorka.gui import handoff, icons, theme
 from tvorka.gui.pages.base import Page
 from tvorka.gui.services import Services
 from tvorka.gui.widgets.basic import Segmented, caption, label
-from tvorka.gui.widgets.canvas import load_scaled
+from tvorka.gui.widgets.canvas import file_mime, load_scaled
 from tvorka.gui.widgets.feedback import ToastHost
 from tvorka.gui.widgets.model_card import kind_name
 from tvorka.i18n import tr
@@ -66,6 +65,19 @@ def tile_icon(pix: QPixmap) -> QIcon:
     return icon
 
 
+class WorksGrid(QListWidget):
+    """The grid of works; a work can be dragged into another section or out of Tvorka."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.path_of: dict[str, str] = {}  # work id -> file
+        self.setDragEnabled(True)
+        self.setDragDropMode(QListWidget.DragDropMode.DragOnly)
+
+    def mimeData(self, items: list[QListWidgetItem]) -> QMimeData:
+        return file_mime([self.path_of.get(i.data(Qt.ItemDataRole.UserRole), "") for i in items])
+
+
 class GalleryPage(Page):
     key = "gallery"
     icon = "gallery"
@@ -96,7 +108,7 @@ class GalleryPage(Page):
         main.addLayout(head)
 
         self.stack = QStackedWidget()
-        self.grid = QListWidget()
+        self.grid = WorksGrid()
         self.grid.setViewMode(QListWidget.ViewMode.IconMode)
         self.grid.setResizeMode(QListWidget.ResizeMode.Adjust)
         self.grid.setMovement(QListWidget.Movement.Static)
@@ -174,6 +186,11 @@ class GalleryPage(Page):
         layout.addWidget(self.detail_prompt)
         self.detail_params = label("", "mono", wrap=True)
         layout.addWidget(self.detail_params)
+        self.lineage = QPushButton()
+        self.lineage.setProperty("role", "link")
+        self.lineage.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.lineage.clicked.connect(self._show_parent)
+        layout.addWidget(self.lineage)
         layout.addStretch(1)
         self.repeat = QPushButton(tr("Repeat these settings"))
         self.repeat.setProperty("role", "accent")
@@ -189,6 +206,12 @@ class GalleryPage(Page):
             button.clicked.connect(handler)
             row.addWidget(button)
         layout.addLayout(row)
+        self.send_button = QPushButton(tr("Send to…"))
+        self.send_button.setIcon(icons.icon("link"))
+        self.send_button.clicked.connect(
+            lambda: self._current() and self.send_menu(handoff.from_result(self._current(), "gallery"),
+                                                       self.send_button))
+        layout.addWidget(self.send_button)
         self.delete = QPushButton(tr("Delete"))
         self.delete.setIcon(icons.icon("trash"))
         self.delete.setProperty("role", "ghost")
@@ -230,6 +253,7 @@ class GalleryPage(Page):
             item.setData(Qt.ItemDataRole.UserRole, work.id)
             item.setToolTip(work.prompt[:200])
             self._items[work.id] = work
+            self.grid.path_of[work.id] = work.path
             self.grid.addItem(item)
             self._pending.append(item)
         self._loader.start()
@@ -262,7 +286,7 @@ class GalleryPage(Page):
 
     def _show_details(self, work: Result | None) -> None:
         for widget in (self.repeat, self.delete, self.detail_title, self.detail_meta, self.detail_prompt,
-                       self.detail_params):
+                       self.detail_params, self.lineage):
             widget.setVisible(work is not None)
         self.details.setVisible(work is not None)
         if work is None:
@@ -288,6 +312,17 @@ class GalleryPage(Page):
                 facts.append(f"{name}: {work.params[key]}")
         self.detail_params.setText("   ".join(facts))
         self.repeat.setVisible(work.kind == "image" and self.services.catalog.get(work.model_id) is not None)
+        parent = self._parent_of(work)
+        if parent is not None:
+            text = tr("Made from: {kind} “{prompt}”", kind=kind_name(parent.kind).lower(),
+                      prompt=parent.prompt or "—")
+            metrics = self.lineage.fontMetrics()
+            self.lineage.setText(metrics.elidedText(text, Qt.TextElideMode.ElideRight, 296))
+            self.lineage.setToolTip(text)
+        elif str(work.params.get("parent", "")).startswith("chat:"):
+            self.lineage.setText(tr("Made from a chat answer"))
+        self.lineage.setVisible(parent is not None or str(work.params.get("parent", "")).startswith("chat:"))
+        self.lineage.setEnabled(parent is not None)
 
     # ============================================================ actions
     def _activated(self, _item: QListWidgetItem) -> None:
@@ -305,9 +340,28 @@ class GalleryPage(Page):
 
     def _repeat(self) -> None:
         work = self._current()
-        page = self._go_to(work.kind) if work else None
-        if work is not None and page is not None and hasattr(page, "apply_result"):
-            page.apply_result(asdict(work))
+        if work is not None:
+            self.send(handoff.from_result(work, "gallery"), work.kind, "settings")
+
+    def _parent_of(self, work: Result) -> Result | None:
+        parent = str(work.params.get("parent") or "")
+        return next((r for r in self.services.history.items() if r.id == parent), None) if parent else None
+
+    def _show_parent(self) -> None:
+        """Lineage: jump to the work this one was made from."""
+        work = self._current()
+        parent = self._parent_of(work) if work else None
+        if parent is None:
+            return
+        if parent.id not in self._items:  # hidden by the kind filter
+            self.kind.set_value("")
+            self._rebuild()
+        for row in range(self.grid.count()):
+            item = self.grid.item(row)
+            if item.data(Qt.ItemDataRole.UserRole) == parent.id:
+                self.grid.setCurrentItem(item)
+                self.grid.scrollToItem(item)
+                return
 
     def _go_to(self, key: str) -> Any:
         window = self.window()

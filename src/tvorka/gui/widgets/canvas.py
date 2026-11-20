@@ -4,12 +4,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QFont, QImageReader, QPainter, QPainterPath, QPaintEvent, QPen, QPixmap
-from PySide6.QtWidgets import QAbstractItemView, QListWidget, QListWidgetItem, QWidget
+from PySide6.QtCore import QMimeData, QPoint, QRectF, QSize, Qt, QUrl, Signal
+from PySide6.QtGui import (
+    QDrag,
+    QFont,
+    QImageReader,
+    QMouseEvent,
+    QPainter,
+    QPainterPath,
+    QPaintEvent,
+    QPen,
+    QPixmap,
+)
+from PySide6.QtWidgets import QAbstractItemView, QApplication, QListWidget, QListWidgetItem, QWidget
 
 from tvorka.gui import theme
 from tvorka.i18n import tr
+
+
+def file_mime(paths: list[str]) -> QMimeData:
+    """Files as drag data: other sections, Explorer and other programs take them."""
+    mime = QMimeData()
+    mime.setUrls([QUrl.fromLocalFile(p) for p in paths if p])
+    return mime
 
 
 def load_scaled(path: str, longest: int) -> QPixmap:
@@ -32,6 +49,8 @@ class Canvas(QWidget):
         self._empty = tr("The result will appear here")
         self._progress: float | None = None
         self._stage = ""
+        self._path = ""
+        self._press: QPoint | None = None
 
     def set_empty_text(self, text: str) -> None:
         self._empty = text
@@ -39,7 +58,28 @@ class Canvas(QWidget):
 
     def set_image(self, path: str | None) -> None:
         self._pixmap = load_scaled(path, 2400) if path else None
+        self._path = path or ""
+        self.setCursor(Qt.CursorShape.OpenHandCursor if path else Qt.CursorShape.ArrowCursor)
+        self.setToolTip(tr("Drag the picture to another section or out of Tvorka") if path else "")
         self.update()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        self._press = event.position().toPoint() if event.button() == Qt.MouseButton.LeftButton else None
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """Drag the result: into the chat, onto a section button, to the desktop."""
+        if self._press is None or not self._path or self._progress is not None:
+            return
+        if (event.position().toPoint() - self._press).manhattanLength() < QApplication.startDragDistance():
+            return
+        self._press = None
+        drag = QDrag(self)
+        drag.setMimeData(file_mime([self._path]))
+        if self._pixmap is not None and not self._pixmap.isNull():
+            drag.setPixmap(self._pixmap.scaled(QSize(120, 120), Qt.AspectRatioMode.KeepAspectRatio,
+                                               Qt.TransformationMode.SmoothTransformation))
+        drag.exec(Qt.DropAction.CopyAction)
 
     def set_progress(self, fraction: float | None, stage: str = "") -> None:
         self._progress = fraction
@@ -114,7 +154,12 @@ class FilmStrip(QListWidget):
         self.setFont(theme.font("mono", 7.5))
         self.currentItemChanged.connect(
             lambda item, _old: item is not None and self.picked.emit(item.data(Qt.ItemDataRole.UserRole)))
+        self.setDragEnabled(True)  # a result can be dragged to another section
+        self.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
         self._count = 0
+
+    def mimeData(self, items: list[QListWidgetItem]) -> QMimeData:
+        return file_mime([item.data(Qt.ItemDataRole.UserRole) for item in items])
 
     def add(self, path: str, thumb: str | None = None) -> None:
         self._count += 1

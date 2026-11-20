@@ -41,7 +41,8 @@ from tvorka.core.attachments import Attachment, AttachmentError
 from tvorka.core.catalog import ModelSpec
 from tvorka.core.chats import Conversation, Message
 from tvorka.core.llm import runtime
-from tvorka.gui import icons, theme
+from tvorka.gui import handoff, icons, theme
+from tvorka.gui.handoff import Asset, Route
 from tvorka.gui.pages.base import Page
 from tvorka.gui.services import Services
 from tvorka.gui.widgets.basic import Card, Field, Segmented, SliderField, label, tool_button
@@ -492,7 +493,9 @@ class ChatPage(Page):
         conv = self._conv
         if not 0 <= index < len(conv.messages):
             return
-        if name == "copy":
+        if name == "send":
+            self.send_menu(handoff.text(conv.messages[index].content, "chat", parent=f"chat:{conv.id}"))
+        elif name == "copy":
             QGuiApplication.clipboard().setText(conv.messages[index].content)
             if self.toasts is not None:
                 self.toasts.show(tr("Copied"), "ok", timeout_ms=1500)
@@ -734,6 +737,21 @@ class ChatPage(Page):
         used += sum(m.tokens() for m in conv.messages) + sum(a.tokens for a in files)
         self.counter.setText(tr("~{used} / {total} tokens", used=f"{used:,}".replace(",", " "),
                                 total=f"{self._ctx(self._fit()):,}".replace(",", " ")))
+
+    # ============================================================ handoff (gui/handoff.py)
+    def routes(self, asset: Asset) -> list[Route]:
+        if asset.kind in ("image", "video", "audio") and asset.path:
+            return [Route("chat", "attachment", tr("Ask about it in the chat"))]
+        if asset.kind == "text" and asset.text.strip() and asset.source != "chat":
+            return [Route("chat", "text", tr("Discuss in the chat"))]
+        return []
+
+    def receive(self, asset: Asset, role: str) -> None:
+        if role == "attachment":
+            self.add_files([Path(asset.path)])
+        elif role == "text":
+            self.text.setPlainText(asset.text.strip())
+        self.text.setFocus()
 
     # ============================================================ attachments
     def _folder(self) -> Path:

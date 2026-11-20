@@ -28,6 +28,8 @@ from tvorka.core import advisor
 from tvorka.core.catalog import ModelSpec
 from tvorka.core.jobs import Job
 from tvorka.engines.media import IMAGE_FORMATS
+from tvorka.gui import handoff
+from tvorka.gui.handoff import Asset, Route
 from tvorka.gui.pages.base import Page
 from tvorka.gui.services import Services
 from tvorka.gui.widgets.aspect import AspectPicker, SizeField
@@ -265,6 +267,7 @@ class ImagePage(Page):
             ("image", tr("Use as reference"), self._use_as_reference),
             ("refresh", tr("Repeat with this seed"), self._repeat_seed),
             ("video", tr("Send to Video as the first frame"), self._to_video),
+            ("link", tr("Send to…"), self._send_to),
         ):
             button = tool_button(icon, tip)
             button.clicked.connect(handler)
@@ -492,6 +495,9 @@ class ImagePage(Page):
         if self.dropzone.path() and self.reference_mode.value():
             params.update(reference=self.dropzone.path(), reference_mode=self.reference_mode.value(),
                           strength=self.strength.value())
+        parent = self.parent_for(self.prompt.toPlainText(), self.dropzone.path())
+        if parent:
+            params["parent"] = parent
         job = Job("image", spec.id, self.prompt.toPlainText().strip(), params)
         self._jobs.add(job.id)
         self._remember()
@@ -607,22 +613,48 @@ class ImagePage(Page):
             if self.toasts is not None:
                 self.toasts.show(tr("Image copied"), "ok", timeout_ms=1800)
 
+    def _asset(self) -> Asset:
+        return handoff.from_result(self._last_result, "image") if self._last_result else Asset("image")
+
     def _use_as_reference(self) -> None:
         if self._current_path():
-            self.dropzone.set_path(self._current_path())
+            self.receive(self._asset(), "reference")
+
+    def _send_to(self) -> None:
+        if self._current_path():
+            self.send_menu(self._asset(), self.result_actions[-1])
 
     def _repeat_seed(self) -> None:
         if self._last_result:
             self.seed.set_value(int(self._last_result["params"].get("seed", 0)))
 
     def _to_video(self) -> None:
-        window = self.window()
-        page = getattr(window, "page", lambda _k: None)("video")
-        if page is not None and hasattr(page, "set_first_frame"):
-            page.set_first_frame(self._current_path())
-            window.open_page(window.pages.index(page))
-        elif self.toasts is not None:
-            self.toasts.show(tr("The Video page is not available yet."), "info")
+        if self._current_path():
+            self.send(self._asset(), "video", "first_frame")
+
+    # ============================================================ handoff (gui/handoff.py)
+    def routes(self, asset: Asset) -> list[Route]:
+        if asset.kind == "image" and asset.path:
+            routes = [Route("image", "reference", tr("Use as a reference"))]
+            result = asset.meta.get("result") or {}
+            if result.get("kind") == "image" and self.services.catalog.get(result.get("model_id", "")):
+                routes.append(Route("image", "settings", tr("Repeat these settings")))
+            return routes
+        if asset.kind == "text" and asset.text.strip():
+            return [Route("image", "prompt", tr("Draw this"))]
+        return []
+
+    def receive(self, asset: Asset, role: str) -> None:
+        if role == "reference":
+            self.dropzone.set_path(asset.path)
+            self.note_received(asset, asset.path)
+        elif role == "settings":
+            self.apply_result(asset.meta.get("result") or {})
+            self.note_received(asset, self.prompt.toPlainText())
+        elif role == "prompt":
+            self.prompt.setPlainText(asset.text.strip())
+            self.prompt.setFocus()
+            self.note_received(asset, asset.text)
 
     # ============================================================ persistence
     def save_state(self) -> None:

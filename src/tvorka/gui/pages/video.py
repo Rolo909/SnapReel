@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -21,11 +22,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from tvorka.core import advisor
+from tvorka.core import advisor, paths
 from tvorka.core.catalog import ModelSpec
-from tvorka.core.jobs import Job
+from tvorka.core.jobs import Job, Result, output_file
+from tvorka.engines import media
 from tvorka.engines.media import VIDEO_FORMATS
-from tvorka.gui import icons
+from tvorka.gui import handoff, icons
+from tvorka.gui.handoff import Asset, Route
 from tvorka.gui.pages.base import Page
 from tvorka.gui.pages.gallery import show_in_folder
 from tvorka.gui.services import Services
@@ -47,6 +50,7 @@ from tvorka.gui.widgets.fit import FitBanner
 from tvorka.gui.widgets.mic import mic_bar
 from tvorka.gui.widgets.model_card import size_text
 from tvorka.i18n import language, messages, tr
+from tvorka.workers.downloads import run_async
 
 
 class VideoPage(Page):
@@ -220,11 +224,20 @@ class VideoPage(Page):
         self.save.clicked.connect(self._save_as)
         self.folder = tool_button("folder", tr("Show in folder"))
         self.folder.clicked.connect(lambda: self._current and show_in_folder(self._current))
+        self.continue_button = tool_button("video", tr("Continue the clip: its last frame starts a new one"))
+        self.continue_button.clicked.connect(self._continue_clip)
+        self.frame_button = tool_button("image", tr("This frame to the Image page as a reference"))
+        self.frame_button.clicked.connect(self._frame_to_image)
+        self.send_button = tool_button("link", tr("Send to…"))
+        self.send_button.clicked.connect(self._send_to)
         for widget in (self.play, self.back, self.forward):
             controls.addWidget(widget)
         controls.addWidget(self.position, 1)
         self.info = label("", "mono")
         controls.addWidget(self.info)
+        controls.addWidget(self.continue_button)
+        controls.addWidget(self.frame_button)
+        controls.addWidget(self.send_button)
         controls.addWidget(self.save)
         controls.addWidget(self.folder)
         self.controls = QWidget()
@@ -261,9 +274,86 @@ class VideoPage(Page):
         if index >= 0:
             self.model_box.setCurrentIndex(index)
 
-    def set_first_frame(self, path: str) -> None:
-        """Image page: "Send to Video as the first frame"."""
-        self.dropzone.set_path(path)
+    # ============================================================ handoff (gui/handoff.py)
+    def routes(self, asset: Asset) -> list[Route]:
+        if asset.kind == "image" and asset.path:
+            return [Route("video", "first_frame", tr("Make a video from it"))]
+        if asset.kind == "video" and asset.path:
+            return [Route("video", "first_frame", tr("Continue the clip"))]
+        if asset.kind == "text" and asset.text.strip():
+            return [Route("video", "prompt", tr("Make a video of this"))]
+        if asset.kind == "audio" and asset.path and self._current:
+            return [Route("video", "voiceover", tr("Lay over the current clip"))]
+        return []
+
+    def receive(self, asset: Asset, role: str) -> None:
+        if role == "first_frame":
+            path = asset.path
+            if asset.kind == "video":  # continue the clip: its last frame starts the next one
+                path = str(self._frame_file(media.video_frame(Path(asset.path))))
+            self.dropzone.set_path(path)
+            self.note_received(asset, path)
+        elif role == "prompt":
+            self.prompt.setPlainText(asset.text.strip())
+            self.prompt.setFocus()
+            self.note_received(asset, asset.text)
+        elif role == "voiceover":
+            self._voiceover(asset)
+
+    def _frame_file(self, image: Any) -> Path:
+        folder = paths.data_dir() / "frames"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f"frame-{int(time.time() * 1000)}.png"
+        image.save(target)
+        return target
+
+    def _current_asset(self) -> Asset:
+        item = next((r for r in self.services.history.items("video") if r.path == self._current), None)
+        return handoff.from_result(item, "video") if item else Asset("video", self._current, source="video")
+
+    def _continue_clip(self) -> None:
+        if self._current:
+            self.receive(self._current_asset(), "first_frame")
+
+    def _frame_to_image(self) -> None:
+        """The frame on screen goes to the Image page as a reference."""
+        if not self._current:
+            return
+        seconds = self._player.position() / 1000 if self._player is not None else None
+        frame = self._frame_file(media.video_frame(Path(self._current), seconds))
+        source = self._current_asset()
+        self.send(Asset("image", str(frame), meta={"parent": source.parent}, source="video"), "image",
+                  "reference")
+
+    def _send_to(self) -> None:
+        if self._current:
+            self.send_menu(self._current_asset(), self.send_button)
+
+    def _voiceover(self, audio: Asset) -> None:
+        """Lay a voice-over on the clip being shown: a new video in the gallery, the original stays."""
+        source = self._current_asset()
+        video = Path(source.path)
+        out = output_file(self.services.settings.output_path(), "video", "mp4")
+        if self.toasts is not None:
+            self.toasts.show(tr("Adding the voice-over…"), "info", timeout_ms=2500)
+        started = time.monotonic()
+
+        def done(seconds: float) -> None:
+            original = source.meta.get("result") or {}
+            result = Result.make(
+                Job("video", original.get("model_id", ""), original.get("prompt", ""),
+                    {**original.get("params", {}), "parent": source.parent,
+                     "voiceover": audio.parent, "duration": round(seconds, 1)}),
+                out, original.get("model_name", ""), time.monotonic() - started)
+            self.services.history.add(result)
+            self.strip.add(str(out))
+            self._show_video(str(out))
+
+        def failed(exc: object) -> None:
+            if self.toasts is not None:
+                self.toasts.show(tr("The voice-over could not be added: {error}", error=exc), "bad")
+
+        run_async(lambda: media.mux_audio(video, Path(audio.path), out), done, failed)
 
     def _model_selected(self, _index: int) -> None:
         spec = self.services.catalog.get(self.model_box.currentData() or "")
@@ -381,6 +471,9 @@ class VideoPage(Page):
             params["negative"] = self.negative.toPlainText().strip()
         if self.dropzone.path() and not self.frame_card.isHidden():
             params["reference"] = self.dropzone.path()
+        parent = self.parent_for(self.prompt.toPlainText(), self.dropzone.path())
+        if parent:
+            params["parent"] = parent
         job = Job("video", spec.id, self.prompt.toPlainText().strip(), params)
         self._jobs.add(job.id)
         self._remember()
