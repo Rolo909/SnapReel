@@ -11,7 +11,8 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from tvorka.core.catalog import ModelSpec
-from tvorka.core.hardware import Hardware
+from tvorka.core.hardware import GpuInfo, Hardware
+from tvorka.core.llm import gguf
 
 # Verdicts, best to worst.
 GREAT, GOOD, SLOW, VERY_SLOW, NO = "great", "good", "slow", "very_slow", "no"
@@ -46,9 +47,27 @@ class Plan:
 
 
 @dataclass(frozen=True)
+class LlmPlan:
+    """How the llama.cpp server should run a chat model."""
+
+    quant: str = ""
+    ctx: int = 4096
+    gpu_layers: int = 0  # transformer blocks on the GPU
+    all_on_gpu: bool = False  # every block and the output layer
+    projector_on_gpu: bool = False
+    cpu_moe_layers: int = 0  # mixture of experts: layers whose experts stay in RAM (--n-cpu-moe)
+    kv_type: str = "f16"  # KV cache precision: f16 or q8_0 (half the memory, nearly the same answers)
+    mtp: bool = False  # multi-token prediction head on the GPU drafts the next words
+
+    @property
+    def device(self) -> str:
+        return "gpu" if self.gpu_layers or self.all_on_gpu else "cpu"
+
+
+@dataclass(frozen=True)
 class Fit:
     verdict: str
-    plan: Plan
+    plan: Plan | LlmPlan
     need_vram_gb: float = 0.0
     have_vram_gb: float = 0.0
     need_ram_gb: float = 0.0
@@ -63,6 +82,10 @@ class Fit:
 
 def _worse(a: str, b: str) -> str:
     return a if _ORDER.index(a) >= _ORDER.index(b) else b
+
+
+def _better(a: str, b: str) -> str:
+    return a if _ORDER.index(a) <= _ORDER.index(b) else b
 
 
 def run_dtype(spec: ModelSpec, device: str) -> str:
@@ -89,11 +112,18 @@ def assess(
     disk_free_gb: float | None = None,
     installed: bool = True,
     reference: str = "",
+    quant: str = "",
+    ctx: int = 0,
 ) -> Fit:
     """Pick the best plan for ``spec`` on ``hw`` and grade the result.
 
     ``reference`` is the job's reference mode; IP-Adapter adds an image encoder.
+    ``quant`` pins a chat model's quantization (the one on disk); otherwise the best one is picked.
+    ``ctx`` is the context a chat model should keep in mind; 0 for the usual 8K.
     """
+    if spec.kind == "chat":
+        return assess_llm(spec, hw, mode=mode, ctx=ctx, quant=quant, disk_free_gb=disk_free_gb,
+                          installed=installed)
     notes: list[tuple[str, dict[str, Any]]] = []
     if reference in IP_ENCODER_GB:
         spec = replace(spec, memory={**spec.memory, "image_encoder": IP_ENCODER_GB[reference]})
@@ -120,7 +150,7 @@ def assess(
         notes.append(("disk", {"need": spec.download_gb, "have": disk_free_gb}))
         return Fit(NO, Plan(device, "cpu", dtype), 0, 0, 0, ram_have, tuple(notes))
 
-    if spec.kind == "speech":
+    if spec.kind in ("speech", "transcribe"):  # small models run on the processor, big ones on the GPU
         return _assess_speech(spec, hw, device, dtype, weights, act, notes)
 
     if device == "cpu":
@@ -243,6 +273,132 @@ def _assess_speech(
         notes.append(("ram", {"need": need_ram, "have": hw.ram_total_gb}))
         verdict = NO
     return Fit(verdict, Plan("cpu", "cpu", "fp32"), 0, 0, need_ram, hw.ram_total_gb, tuple(notes))
+
+
+# ------------------------------------------------------------------ chat models
+DEFAULT_CTX = 8192  # tokens of conversation the model keeps in mind unless asked for more
+MIN_BITS = 3.5  # below this, answers degrade noticeably; such files are a last resort
+SWEET_BITS = 4.9  # Q4_K_M: the usual balance of quality and speed
+MAX_BITS = 6.6  # Q6_K: beyond it quality barely grows while speed halves
+KV_Q8 = 8.5 / 16  # q8_0 KV cache relative to f16
+MTP_CACHE_GB = 0.1  # the draft head's own KV cache
+
+
+def llm_gpu(hw: Hardware) -> GpuInfo | None:
+    """The GPU llama.cpp would use. Unlike PyTorch it reaches any GPU through Vulkan."""
+    return max(hw.gpus, key=lambda g: (not g.integrated, g.vram_total_gb), default=None)
+
+
+def assess_llm(
+    spec: ModelSpec, hw: Hardware, *, mode: str = "auto", ctx: int = 0, quant: str = "",
+    disk_free_gb: float | None = None, installed: bool = True,
+) -> Fit:
+    """Grade a chat model: picks the quantization (unless ``quant`` is given) and the GPU share."""
+    ctx = ctx or min(spec.context or DEFAULT_CTX, DEFAULT_CTX)
+    gpu = None if mode == "cpu" else llm_gpu(hw)
+    pinned = spec.quant(quant) if quant else None
+    if pinned is not None or not spec.quants:
+        options = [pinned or {"name": quant, "gb": spec.download_gb}]
+    else:
+        options = [q for q in spec.quants if gguf.quant_bits(q["name"]) >= MIN_BITS] or spec.quants
+    graded = [(q, _fit_quant(spec, q, hw, gpu, ctx, disk_free_gb, installed)) for q in options]
+    best = min(_ORDER.index(fit.verdict) for _q, fit in graded)
+    top = [(q, fit) for q, fit in graded if _ORDER.index(fit.verdict) == best]
+    if len(top) == 1:
+        return top[0][1]
+    cap = MAX_BITS if _ORDER[best] == GREAT else SWEET_BITS
+
+    def bits(q: dict[str, Any]) -> float:
+        return gguf.quant_bits(q["name"]) or SWEET_BITS
+
+    within = [item for item in top if bits(item[0]) <= cap]
+    if within:
+        return max(within, key=lambda item: (bits(item[0]), -item[0]["gb"]))[1]
+    return min(top, key=lambda item: item[0]["gb"])[1]
+
+
+def _fit_quant(
+    spec: ModelSpec, q: dict[str, Any], hw: Hardware, gpu: GpuInfo | None, ctx: int,
+    disk_free_gb: float | None, installed: bool,
+) -> Fit:
+    notes: list[tuple[str, dict[str, Any]]] = []
+    name, weights = str(q.get("name", "")), float(q.get("gb") or spec.download_gb or 0.5)
+    kv = spec.kv_gb_per_1k * ctx / 1024 + spec.kv_fixed_gb
+    if not (spec.kv_gb_per_1k or spec.kv_fixed_gb):
+        kv = weights * 0.03 * ctx / 1024  # header without sizes: about 0.12 GB per 1K for an 8B model
+    compute = 0.35 + 0.15 * ctx / 8192  # llama.cpp scratch buffers (logits, attention)
+    proj = spec.mmproj_gb
+    draft = spec.mtp_gb + MTP_CACHE_GB if spec.mtp else 0.0
+    ram_have = hw.ram_total_gb
+    plan = LlmPlan(name, ctx)
+
+    if not installed and disk_free_gb is not None and weights + proj + spec.mtp_gb + 1.0 > disk_free_gb:
+        notes.append(("disk", {"need": weights + proj + spec.mtp_gb, "have": disk_free_gb}))
+        return Fit(NO, plan, 0, 0, 0, ram_have, tuple(notes))
+
+    vram = gpu.vram_total_gb if gpu else 0.0
+    usable = vram - (0.5 if vram <= 6.5 else 0.8)
+    kv_type = "f16"
+    # A long conversation, or a cache that keeps the model off the card: keep it at 8 bits.
+    if ctx > DEFAULT_CTX or (gpu is not None and weights + kv + compute + proj > usable):
+        kv_type, kv = "q8_0", kv * KV_Q8
+    # Mixture of experts: each word goes through only a few experts, the rest of the weights always.
+    experts = weights * spec.expert_share if spec.experts > 1 and spec.layers else 0.0
+    dense, used = weights - experts, (spec.experts_used or spec.experts) / max(spec.experts, 1)
+    per_word = dense + experts * used  # what the processor reads for each word when it runs alone
+    need_vram, verdict = 0.0, NO
+    if gpu is not None and weights + kv + compute + proj <= usable:
+        verdict, need_vram = GREAT, weights + kv + compute + proj
+        mtp = bool(draft) and need_vram + draft <= usable
+        need_vram += draft if mtp else 0.0
+        plan = LlmPlan(name, ctx, spec.layers, True, bool(spec.mmproj), kv_type=kv_type, mtp=mtp)
+        need_ram = 1.0 + (weights if gpu.integrated else 0.3)  # integrated GPUs share the RAM
+    elif gpu is not None and experts and dense + kv + compute <= usable:
+        # Everything but the experts on the card; the experts of the first layers stay in RAM.
+        on_gpu_proj = bool(proj) and dense + kv + compute + proj <= usable
+        base = dense + kv + compute + (proj if on_gpu_proj else 0.0)
+        mtp = bool(draft) and base + draft <= usable  # worth more than one more layer of experts
+        base += draft if mtp else 0.0
+        per_layer = experts / spec.layers
+        cpu_layers = max(0, spec.layers - int((usable - base) / per_layer))
+        in_ram = per_layer * cpu_layers
+        verdict = GREAT if not cpu_layers else GOOD if in_ram * used <= 1.5 else \
+            SLOW if in_ram * used <= 5.0 else VERY_SLOW
+        need_vram = base + experts - in_ram
+        plan = LlmPlan(name, ctx, spec.layers, True, on_gpu_proj, cpu_layers, kv_type, mtp)
+        if cpu_layers:
+            notes.append(("llm_moe", {"layers": cpu_layers, "total": spec.layers}))
+        need_ram = in_ram + 1.0 + (0.0 if on_gpu_proj else proj)
+    else:
+        share, on_gpu_proj = 0.0, False
+        if gpu is not None and spec.layers:
+            on_gpu_proj = bool(proj) and usable - compute - proj > weights * 0.3
+            room = usable - compute - (proj if on_gpu_proj else 0.0)
+            share = max(0.0, min(1.0, room / (weights + kv)))
+        on_cpu = GOOD if per_word <= 1.5 else SLOW if per_word <= 5.0 else VERY_SLOW
+        layers = int(share * spec.layers)
+        if layers:
+            share = layers / spec.layers
+            # Every layer moved to the GPU only helps: never grade it below the processor alone.
+            verdict = _better(GOOD if share >= 0.85 else SLOW if share >= 0.5 else VERY_SLOW, on_cpu)
+            need_vram = (weights + kv) * share + compute + (proj if on_gpu_proj else 0.0)
+            plan = LlmPlan(name, ctx, layers, False, on_gpu_proj, kv_type=kv_type)
+            notes.append(("llm_partial", {"share": round(share * 100)}))
+        else:
+            share, verdict = 0.0, on_cpu
+            notes.append(("llm_cpu", {}))
+        need_ram = (weights + kv) * (1 - share) + compute + 1.0 + (0.0 if plan.projector_on_gpu else proj)
+
+    # Weights are memory-mapped: past the RAM size every token reads the disk.
+    if need_ram > ram_have * 1.05:
+        notes.append(("ram", {"need": need_ram, "have": ram_have}))
+        verdict = NO
+    elif need_ram > ram_have * 0.82:
+        notes.append(("ram_swap", {"need": need_ram, "have": ram_have}))
+        verdict = _worse(verdict, VERY_SLOW if need_ram > ram_have * 0.95 else SLOW)
+    if gpu is not None and plan.device == "gpu" and gpu.vram_free_gb + 1.0 < need_vram <= vram:
+        notes.append(("vram_busy", {"free": gpu.vram_free_gb}))
+    return Fit(verdict, plan, need_vram, vram, need_ram, ram_have, tuple(notes))
 
 
 def snap(value: float, multiple: int) -> int:

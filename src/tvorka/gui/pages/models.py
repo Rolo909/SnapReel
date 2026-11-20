@@ -26,7 +26,7 @@ from tvorka.gui.pages.base import Page
 from tvorka.gui.services import Services
 from tvorka.gui.widgets.basic import Card, Segmented, label, tool_button
 from tvorka.gui.widgets.feedback import ToastHost
-from tvorka.gui.widgets.model_card import ModelCard, size_text
+from tvorka.gui.widgets.model_card import ModelCard, chat_download_files, size_text
 from tvorka.i18n import messages, tr
 from tvorka.workers.downloads import run_async
 
@@ -73,7 +73,8 @@ class ModelsPage(Page):
                               ("installed", tr("Installed"))])
         self.tab.changed.connect(self._tab_changed)
         self.kind = Segmented([("", tr("All")), ("image", tr("Images")), ("video", tr("Video")),
-                               ("speech", tr("Voice"))])
+                               ("speech", tr("Voice")), ("chat", tr("Chat")),
+                               ("transcribe", tr("Speech recognition"))])
         self.kind.changed.connect(self._kind_changed)
         self.add_button = QPushButton(tr("Add your own"))
         self.add_button.setIcon(icons.icon("plus"))
@@ -236,8 +237,21 @@ class ModelsPage(Page):
         if spec.gated and not self.services.settings.token():
             self._gated_hint(spec)
             return
-        self.services.downloads.start(spec)
+        if spec.kind == "chat" and spec.source == "hf":
+            files = self._chat_files(spec)
+            if not files:
+                return
+            self.services.downloads.start(spec, files)
+        else:
+            self.services.downloads.start(spec)
         self._update_card(model_id)
+
+    def _chat_files(self, spec: ModelSpec) -> list[str]:
+        """One quantization (the one the advisor picked for this computer), the projector, the MTP head."""
+        files = chat_download_files(spec, self.services.fit(spec))
+        if not files and self.toasts is not None:
+            self.toasts.show(tr("Checking this computer…"), "info")
+        return files
 
     def _gated_hint(self, spec: ModelSpec) -> None:
         if self.toasts is not None:
@@ -391,8 +405,8 @@ class ModelsPage(Page):
         self.source_edit.clear()
         self.source_edit.setPlaceholderText({
             "hf": tr("author/model or a link to its Hugging Face page"),
-            "folder": tr("Folder with a diffusers or transformers model"),
-            "file": tr("A .safetensors / .ckpt checkpoint or a Silero .pt file"),
+            "folder": tr("Folder with a diffusers, transformers or GGUF model"),
+            "file": tr("A .safetensors / .ckpt checkpoint, a Silero .pt or a .gguf chat model"),
         }[source])
         self.add_status.setText("")
         _clear(self.preview)
@@ -402,7 +416,7 @@ class ModelsPage(Page):
             chosen = QFileDialog.getExistingDirectory(self, tr("Choose a model folder"))
         else:
             chosen, _ = QFileDialog.getOpenFileName(self, tr("Choose a model file"), "",
-                                                    f"{tr('Models')} (*.safetensors *.ckpt *.pt)")
+                                                    f"{tr('Models')} (*.safetensors *.ckpt *.pt *.gguf)")
         if chosen:
             self.source_edit.setText(chosen)
             self._recognize()

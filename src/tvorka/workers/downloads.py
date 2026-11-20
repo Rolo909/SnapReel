@@ -70,13 +70,14 @@ class DownloadManager(QObject):
     def active_ids(self) -> list[str]:
         return list(self._active)
 
-    def start(self, spec: ModelSpec) -> None:
+    def start(self, spec: ModelSpec, only: list[str] | None = None) -> None:
+        """Download ``spec``; ``only`` picks files of a repo (see ``ModelStore.download_task``)."""
         if spec.id in self._active or spec.source not in ("hf", "url"):
             return
         handle = tempfile.NamedTemporaryFile(  # noqa: SIM115 - closed right below, kept on disk
             "w", suffix=".json", prefix="tvorka-dl-", delete=False, encoding="utf-8")
         with handle:
-            json.dump(self._store.download_task(spec), handle)
+            json.dump(self._store.download_task(spec, only), handle)
         program, args = worker_command("--download", handle.name)
 
         process = QProcess(self)

@@ -45,7 +45,7 @@ def test_every_catalog_model_gets_a_plan(catalog: Catalog, vram: float) -> None:
     for model in catalog.all():
         fit = advisor.assess(model, hw)
         assert fit.verdict in ("great", "good", "slow", "very_slow", "no")
-        if fit.ok and model.kind != "speech" and model.source != "online":
+        if fit.ok and model.kind in ("image", "video") and model.source != "online":
             assert fit.plan.device == "cuda"
             assert fit.need_vram_gb <= vram
 
@@ -220,3 +220,139 @@ def test_snap_frames(catalog: Catalog) -> None:
     assert (advisor.snap_frames(ltx, 100) - 1) % 8 == 0
     turbo = spec(catalog, "stabilityai/sd-turbo")
     assert advisor.snap_frames(turbo, 7) == 7
+
+
+# ------------------------------------------------------------------ chat models
+def chat_spec(**extra: object) -> ModelSpec:
+    quants = [{"name": n, "gb": gb, "files": [f"m-{n}.gguf"]}
+              for n, gb in (("Q3_K_M", 4.4), ("IQ4_XS", 4.8), ("Q4_K_M", 5.3), ("Q5_K_M", 6.1),
+                            ("Q6_K", 7.0), ("Q8_0", 8.9))]
+    return ModelSpec.from_dict({"id": "test/chat-9b", "name": "Chat 9B", "kind": "chat", "engine": "llama",
+                                "quants": quants, "layers": 32, "kv_gb_per_1k": 0.0312, "context": 262144,
+                                "mmproj": "mmproj-F16.gguf", "mmproj_gb": 0.86, **extra})
+
+
+def test_chat_model_picks_the_best_quant_that_fits_the_gpu() -> None:
+    fit = advisor.assess(chat_spec(), machine(8))
+    assert fit.verdict == "great"
+    assert fit.plan.quant == "Q4_K_M" and fit.plan.all_on_gpu and fit.plan.projector_on_gpu
+    assert fit.plan.ctx == advisor.DEFAULT_CTX
+    assert fit.need_vram_gb <= 8 - 0.8
+    # More memory buys quality, up to Q6_K: Q8_0 would halve the speed for little gain.
+    assert advisor.assess(chat_spec(), machine(12)).plan.quant == "Q6_K"
+    assert advisor.assess(chat_spec(), machine(24, ram=64)).plan.quant == "Q6_K"
+
+
+def test_chat_model_splits_between_gpu_and_processor() -> None:
+    fit = advisor.assess(chat_spec(), machine(4))
+    assert fit.plan.device == "gpu" and not fit.plan.all_on_gpu
+    assert 0 < fit.plan.gpu_layers < 32
+    assert "llm_partial" in codes(fit)
+    assert fit.verdict in ("slow", "very_slow")
+    # Split between GPU and processor: a 4-bit file at most — a bigger one only slows it down further.
+    assert fit.plan.quant in ("IQ4_XS", "Q4_K_M")
+
+
+def test_chat_model_on_the_processor() -> None:
+    fit = advisor.assess(chat_spec(), machine(None))
+    assert fit.plan.device == "cpu" and fit.plan.gpu_layers == 0
+    assert codes(fit) == ["llm_cpu"]
+    assert fit.verdict == "slow"
+    assert advisor.assess(chat_spec(), machine(8), mode="cpu").plan.device == "cpu"
+
+
+def test_chat_model_uses_a_gpu_pytorch_cannot() -> None:
+    radeon = Hardware("Test OS", "Test CPU", 6, 12, 16, 10, 8,
+                      (GpuInfo("Radeon RX 5700", "amd", 8, 7.5),), CPU_TORCH)
+    assert radeon.device == "cpu"  # no PyTorch build for this card
+    assert advisor.assess(chat_spec(), radeon).plan.all_on_gpu  # llama.cpp reaches it through Vulkan
+
+
+def test_chat_model_does_not_fit_in_ram() -> None:
+    fit = advisor.assess(chat_spec(), machine(None, ram=4))
+    assert fit.verdict == "no" and "ram" in codes(fit)
+
+
+def test_installed_chat_quant_is_kept() -> None:
+    fit = advisor.assess(chat_spec(), machine(24, ram=64), quant="Q3_K_M")
+    assert fit.plan.quant == "Q3_K_M"
+
+
+def test_chat_model_needs_disk_space() -> None:
+    fit = advisor.assess(chat_spec(), machine(8), disk_free_gb=3.0, installed=False)
+    assert fit.verdict == "no" and "disk" in codes(fit)
+
+
+def test_more_memory_never_makes_a_chat_model_worse(catalog: Catalog) -> None:
+    order = ["great", "good", "slow", "very_slow", "no"]
+    for model in catalog.all("chat"):
+        verdicts = [advisor.assess(model, machine(v, ram=r)).verdict
+                    for v, r in ((None, 16), (4, 16), (8, 16), (12, 32), (24, 64))]
+        ranks = [order.index(v) for v in verdicts]
+        assert ranks == sorted(ranks, reverse=True), (model.id, verdicts)
+
+
+# ------------------------------------------------------------------ chat models: faster answers
+def moe_spec(**extra: object) -> ModelSpec:
+    quants = [{"name": "UD-Q3_K_XL", "gb": 12.0, "files": ["m-q3.gguf"]},
+              {"name": "UD-Q4_K_XL", "gb": 15.8, "files": ["m-q4.gguf"]}]
+    moe = {"experts": 128, "experts_used": 8, "expert_share": 0.88, **extra}
+    return chat_spec(quants=quants, layers=30, kv_gb_per_1k=0.0195, kv_fixed_gb=0.29, mmproj_gb=1.1, **moe)
+
+
+def test_mixture_of_experts_keeps_experts_in_ram() -> None:
+    fit = advisor.assess(moe_spec(), machine(8))
+    plan = fit.plan
+    assert plan.all_on_gpu and 0 < plan.cpu_moe_layers < 30  # attention on the card, some experts too
+    assert "llm_moe" in codes(fit) and "llm_partial" not in codes(fit)
+    assert fit.verdict == "good"  # each word reads only 8 of 128 experts from RAM
+    assert fit.need_vram_gb <= 8 - 0.8
+    weights = moe_spec().quant(plan.quant)["gb"]
+    in_ram = weights * 0.88 * plan.cpu_moe_layers / 30
+    assert fit.need_ram_gb == pytest.approx(in_ram + 1.0, abs=0.05)
+    # More video memory keeps more experts on the card.
+    assert advisor.assess(moe_spec(), machine(12, ram=32)).plan.cpu_moe_layers < plan.cpu_moe_layers
+    assert advisor.assess(moe_spec(), machine(24, ram=64)).plan.cpu_moe_layers == 0
+
+
+def test_mixture_of_experts_is_faster_than_a_dense_model_of_its_size() -> None:
+    dense = advisor.assess(moe_spec(experts=0, expert_share=0.0), machine(8))
+    moe = advisor.assess(moe_spec(), machine(8))
+    order = ["great", "good", "slow", "very_slow", "no"]
+    assert order.index(moe.verdict) < order.index(dense.verdict)
+    assert dense.plan.cpu_moe_layers == 0 and not dense.plan.all_on_gpu  # split by layers instead
+    on_cpu = advisor.assess(moe_spec(), machine(None, ram=32))
+    assert on_cpu.plan.device == "cpu" and on_cpu.verdict == "slow"  # not very_slow: few experts per word
+
+
+def test_kv_cache_is_compressed_only_when_it_helps() -> None:
+    assert advisor.assess(chat_spec(), machine(24, ram=64)).plan.kv_type == "f16"  # fits as it is
+    assert advisor.assess(chat_spec(), machine(4)).plan.kv_type == "q8_0"  # frees room for layers
+    long = advisor.assess_llm(chat_spec(), machine(24, ram=64), ctx=32768)
+    assert long.plan.kv_type == "q8_0"
+    q4 = advisor.assess_llm(chat_spec(), machine(24, ram=64), ctx=32768, quant="Q4_K_M")
+    compute = 0.35 + 0.15 * 4
+    cache = 0.0312 * 32 * advisor.KV_Q8  # the cache counts at 8 bits
+    assert q4.need_vram_gb == pytest.approx(5.3 + 0.86 + compute + cache)
+
+
+def test_multi_token_prediction_when_it_fits() -> None:
+    spec = chat_spec(mtp="mtp-model.gguf", mtp_gb=0.43)
+    roomy = advisor.assess(spec, machine(24, ram=64))
+    assert roomy.plan.mtp
+    assert roomy.need_vram_gb == pytest.approx(advisor.assess(chat_spec(), machine(24, ram=64)).need_vram_gb
+                                               + 0.43 + advisor.MTP_CACHE_GB)
+    assert not advisor.assess(chat_spec(), machine(24, ram=64)).plan.mtp  # no head, no drafting
+    assert not advisor.assess(spec, machine(4)).plan.mtp  # split between GPU and processor
+    assert not advisor.assess(spec, machine(None)).plan.mtp
+    moe = advisor.assess(moe_spec(mtp="mtp-model.gguf", mtp_gb=0.43), machine(8))
+    assert moe.plan.mtp and moe.plan.cpu_moe_layers  # the head goes before one more layer of experts
+    assert moe.need_vram_gb <= 8 - 0.8
+
+
+def test_multi_token_head_needs_disk_space() -> None:
+    spec = chat_spec(mtp="mtp-model.gguf", mtp_gb=0.43)
+    q4 = 5.3 + 0.86  # the 4-bit file and the projector
+    assert advisor.assess(chat_spec(), machine(8), disk_free_gb=q4 + 1.2, installed=False).verdict != "no"
+    fit = advisor.assess(spec, machine(8), disk_free_gb=q4 + 1.2, quant="Q4_K_M", installed=False)
+    assert fit.verdict == "no" and "disk" in codes(fit)

@@ -72,8 +72,10 @@ NOTES = {"online": {}, "torch_cpu_build": {}, "gpu_unsupported": {"gpu": "Radeon
          "disk": {"need": 7.0, "have": 2.5}, "cpu_only": {}, "ram": {"need": 30, "have": 16},
          "ram_swap": {"need": 15, "have": 16}, "vram": {"need": 4.0, "have": 2.0},
          "hybrid": {"parts": "text_encoder"}, "stream": {}, "offload": {}, "forced_risky": {},
-         "above_native": {}, "vram_busy": {"free": 1.2}}
-HUB = ["gated", "not_found", "network", "bad_id", "addon", "unsupported", "disk", "failed"]
+         "above_native": {}, "vram_busy": {"free": 1.2}, "llm_partial": {"share": 70}, "llm_cpu": {},
+         "llm_moe": {"layers": 24, "total": 30}}
+HUB = ["gated", "not_found", "network", "bad_id", "addon", "unsupported", "projector", "checksum",
+       "disk", "failed"]
 
 
 @pytest.mark.parametrize("lang", ["ru", "en"])

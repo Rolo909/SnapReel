@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap, QTransform
 
 from tvorka.gui import theme
 
@@ -55,6 +55,31 @@ def _video() -> QPainterPath:
 def _voice() -> QPainterPath:
     bars = [(4, 8, 12), (7, 5, 15), (10, 3, 17), (13, 6, 14), (16, 8.5, 11.5)]
     return _join(*(_p((x, a), (x, b)) for x, a, b in bars))
+
+
+def _chat() -> QPainterPath:  # speech bubble
+    return _join(_rect(3, 3.5, 14, 10, 3), _p((6.5, 13.5), (5.5, 17), (10, 13.5)))
+
+
+def _edit() -> QPainterPath:  # pencil
+    return _join(_p((4, 16), (4.6, 12.6), (13, 4.2), (15.8, 7), (7.4, 15.4), (4, 16)),
+                 _p((11, 6.2), (13.8, 9)))
+
+
+def _attach() -> QPainterPath:  # paper clip, drawn upright and tilted
+    path = QPainterPath(QPointF(13, 7))
+    path.lineTo(QPointF(13, 14.5))
+    path.arcTo(QRectF(8, 12, 5, 5), 0, -180)
+    path.lineTo(QPointF(8, 5))
+    path.arcTo(QRectF(8, 3.25, 3.5, 3.5), 180, -180)
+    path.lineTo(QPointF(11.5, 13))
+    return QTransform().translate(10, 10).rotate(40).translate(-10, -10).map(path)
+
+
+def _mic() -> QPainterPath:  # microphone
+    cup = QPainterPath(QPointF(5, 9.5))
+    cup.arcTo(QRectF(5, 5, 10, 9.5), 180, 180)
+    return _join(_rect(7.5, 2.5, 5, 9, 2.5), cup, _p((10, 14.5), (10, 17.5)), _p((7, 17.5), (13, 17.5)))
 
 
 def _models() -> QPainterPath:  # stacked layers
@@ -161,11 +186,12 @@ def _lock() -> QPainterPath:
 
 
 GLYPHS: dict[str, Callable[[], QPainterPath]] = {
-    "image": _image, "video": _video, "voice": _voice, "models": _models, "gallery": _gallery,
+    "image": _image, "video": _video, "voice": _voice, "chat": _chat, "models": _models, "gallery": _gallery,
     "settings": _settings, "download": _download, "trash": _trash, "folder": _folder,
     "check": _check, "close": _close, "play": _play, "pause": _pause, "stop": _stop, "copy": _copy,
     "refresh": _refresh, "plus": _plus, "search": _search, "dice": _dice, "link": _link,
     "warning": _warning, "info": _info, "chevron": _chevron, "upscale": _upscale, "lock": _lock,
+    "edit": _edit, "attach": _attach, "mic": _mic,
 }
 
 

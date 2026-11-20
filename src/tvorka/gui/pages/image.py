@@ -45,6 +45,7 @@ from tvorka.gui.widgets.canvas import Canvas, FilmStrip
 from tvorka.gui.widgets.dropzone import DropZone
 from tvorka.gui.widgets.feedback import ToastHost
 from tvorka.gui.widgets.fit import FitBanner
+from tvorka.gui.widgets.mic import mic_bar
 from tvorka.i18n import messages, tr
 
 GB = 1024**3
@@ -125,6 +126,7 @@ class ImagePage(Page):
         self.prompt.setAccessibleName(tr("Prompt"))
         self.prompt.textChanged.connect(self._update_action)
         column.addWidget(self.prompt)
+        column.addWidget(mic_bar(self, self.prompt))
         column.addWidget(label(tr("Tip: most models understand English best."), "faint"))
 
         # model

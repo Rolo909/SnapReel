@@ -19,14 +19,17 @@ def test_builtin_catalog_is_valid() -> None:
         assert model.text("ru") and model.text("en"), model.id
         assert model.license, model.id
         assert model.download_gb > 0 or model.source == "online", model.id
-        if model.source != "online":
+        if model.kind == "chat":
+            assert model.quants and model.layers and (model.kv_gb_per_1k or model.kv_fixed_gb), model.id
+            assert all(q["files"] and q["gb"] > 0 for q in model.quants), model.id
+        elif model.source != "online":
             assert model.memory, model.id
         if model.kind == "speech" and model.engine == "silero":
             assert model.voices and model.files, model.id
         if model.kind == "video":
             assert model.default("frames") and model.default("fps"), model.id
     kinds = {m.kind for m in loaded.all()}
-    assert kinds == {"image", "video", "speech"}
+    assert kinds == {"image", "video", "speech", "chat", "transcribe"}
 
 
 def test_user_models_persist(data_dir: Path) -> None:

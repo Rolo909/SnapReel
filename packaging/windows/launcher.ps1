@@ -387,7 +387,7 @@ function Start-Install {
     $env:UV_CONCURRENT_DOWNLOADS = '1'
     if ($script:python) { $env:UV_PYTHON = $script:python } else { Remove-Item Env:UV_PYTHON -ErrorAction SilentlyContinue }
     $arguments = @('sync', '--project', "`"$App`"", '--frozen', '--no-dev', '--no-editable',
-                   '--extra', $script:flavor, '--extra', 'online')
+                   '--extra', $script:flavor, '--extra', 'online', '--extra', 'docs')
     Write-Log ("uv " + ($arguments -join ' '))
     $script:proc = Start-Process -FilePath $Uv -ArgumentList $arguments -WindowStyle Hidden -PassThru `
         -RedirectStandardError (Join-Path $Runtime 'uv-stderr.log') `

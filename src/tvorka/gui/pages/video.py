@@ -44,6 +44,7 @@ from tvorka.gui.widgets.canvas import Canvas, FilmStrip
 from tvorka.gui.widgets.dropzone import DropZone
 from tvorka.gui.widgets.feedback import ToastHost
 from tvorka.gui.widgets.fit import FitBanner
+from tvorka.gui.widgets.mic import mic_bar
 from tvorka.gui.widgets.model_card import size_text
 from tvorka.i18n import language, messages, tr
 
@@ -102,6 +103,7 @@ class VideoPage(Page):
         self.prompt.setAccessibleName(tr("Prompt"))
         self.prompt.textChanged.connect(self._update_action)
         column.addWidget(self.prompt)
+        column.addWidget(mic_bar(self, self.prompt))
         column.addWidget(label(tr("Tip: most models understand English best."), "faint"))
 
         model_card = Card(tr("Model"))

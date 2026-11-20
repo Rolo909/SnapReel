@@ -129,9 +129,12 @@ def write_audio(samples: np.ndarray, rate: int, path: Path) -> None:
             container.mux(packet)
 
 
-def read_audio(path: Path, max_seconds: float = 3600.0) -> tuple[np.ndarray, int]:
-    """Decode any audio file to mono float32 — used for waveform drawing."""
-    if path.suffix.lower() == ".wav":
+def read_audio(path: Path, max_seconds: float = 3600.0, rate: int | None = None) -> tuple[np.ndarray, int]:
+    """Decode any audio file (or the sound of a video) to mono float32.
+
+    ``rate`` resamples to that many samples per second (speech recognition needs 16000).
+    """
+    if path.suffix.lower() == ".wav" and rate is None:
         try:
             with wave.open(str(path), "rb") as handle:
                 rate, channels, width = handle.getframerate(), handle.getnchannels(), handle.getsampwidth()
@@ -146,12 +149,18 @@ def read_audio(path: Path, max_seconds: float = 3600.0) -> tuple[np.ndarray, int
     chunks: list[np.ndarray] = []
     with av.open(str(path)) as container:
         stream = container.streams.audio[0]
-        rate = stream.rate or 44100
+        rate = rate or stream.rate or 44100
         resampler = av.AudioResampler(format="flt", layout="mono", rate=rate)
+        limit, have = int(max_seconds * rate), 0
         for frame in container.decode(stream):
             for out in resampler.resample(frame):
                 chunks.append(out.to_ndarray().reshape(-1))
-    data = np.concatenate(chunks) if chunks else np.zeros(1, dtype=np.float32)
+                have += chunks[-1].size
+            if have >= limit:
+                break
+        for out in resampler.resample(None):  # what the resampler still holds
+            chunks.append(out.to_ndarray().reshape(-1))
+    data = np.concatenate(chunks)[: int(max_seconds * rate)] if chunks else np.zeros(1, dtype=np.float32)
     return data, rate
 
 

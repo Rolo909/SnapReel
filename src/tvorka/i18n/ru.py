@@ -211,8 +211,9 @@ RU: dict[str, str] = {
     "Check": "Проверить",
     "Checking…": "Проверяем…",
     "author/model or a link to its Hugging Face page": "автор/модель или ссылка на её страницу на Hugging Face",
-    "Folder with a diffusers or transformers model": "Папка с моделью diffusers или transformers",
-    "A .safetensors / .ckpt checkpoint or a Silero .pt file": "Чекпойнт .safetensors / .ckpt или файл Silero .pt",
+    "Folder with a diffusers, transformers or GGUF model": "Папка с моделью diffusers, transformers или GGUF",
+    "A .safetensors / .ckpt checkpoint, a Silero .pt or a .gguf chat model":
+        "Чекпойнт .safetensors / .ckpt, файл Silero .pt или чат-модель .gguf",
     "Choose a model folder": "Выбор папки модели",
     "Choose a model file": "Выбор файла модели",
     "Recognized. Check the details and add it to your models.":
@@ -474,4 +475,167 @@ RU: dict[str, str] = {
     "Not enough disk space for the download. Free some space or choose another "
     "models folder in Settings.":
         "Не хватает места на диске для загрузки. Освободите место или выберите другую папку моделей в настройках.",
+    # --- chat models -----------------------------------------------------------------
+    "{share} % of the model fits on the graphics card, the rest runs on the "
+    "processor — answers come slower.":
+        "{share} % модели помещается в видеокарту, остальное считает процессор — ответы будут медленнее.",
+    "Answers are written by the processor: a few words per second.":
+        "Ответы пишет процессор: несколько слов в секунду.",
+    "The experts of {layers} of {total} layers stay in RAM, the rest is on the graphics "
+    "card: each word needs only a few experts.":
+        "Эксперты {layers} из {total} слоёв лежат в оперативной памяти, остальное — на видеокарте: "
+        "на каждое слово модель берёт лишь несколько экспертов.",
+    "This file only lets a chat model see images (mmproj). "
+    "Choose the model file itself.":
+        "Этот файл только помогает чат-модели видеть картинки (mmproj). Выберите сам файл модели.",
+    "The downloaded file is damaged. Try downloading it again.":
+        "Скачанный файл повреждён. Попробуйте скачать его ещё раз.",
+    "Chat": "Чат",
+    "remembers {count}K tokens of the conversation": "помнит {count} тыс. токенов разговора",
+    "sees images": "видит картинки",
+    # --- chat ---------------------------------------------------------------------------
+    "Not enough memory for this chat model. Close other programs, choose a shorter "
+    "conversation memory or a smaller model.":
+        "Не хватает памяти для этой модели. Закройте другие программы, уменьшите память разговора "
+        "или выберите модель поменьше.",
+    "The chat model could not be loaded. Its file may be damaged — delete it on the "
+    "Models page and download it again.":
+        "Не удалось загрузить модель. Возможно, файл повреждён — удалите её на странице «Модели» "
+        "и скачайте заново.",
+    "This version of the chat engine cannot run this model.":
+        "Эта версия движка чата не умеет запускать такую модель.",
+    "The chat model took too long to load. Try again or choose a smaller model.":
+        "Модель загружалась слишком долго. Попробуйте ещё раз или выберите модель поменьше.",
+    "The chat engine stopped unexpectedly. Send the message again — it will restart. "
+    "Details are in the log.":
+        "Движок чата неожиданно остановился. Отправьте сообщение ещё раз — он перезапустится. "
+        "Подробности — в журнале.",
+    "The conversation no longer fits in the model's memory. Start a new chat or "
+    "choose a longer memory in the chat settings.":
+        "Разговор больше не помещается в память модели. Начните новый чат или увеличьте память "
+        "разговора в настройках чата.",
+    "Assistant": "Помощник",
+    "Image prompt writer": "Промпты для картинок",
+    "Video director": "Режиссёр видео",
+    "Screenwriter": "Сценарист",
+    "Translator": "Переводчик",
+    "Text for voice-over": "Текст для озвучки",
+    "New chat": "Новый чат",
+    "Search chats": "Поиск по чатам",
+    "Chats": "Чаты",
+    "Your conversations will be listed here.": "Здесь появятся ваши разговоры.",
+    "Role": "Роль",
+    "Chat settings": "Настройки чата",
+    "Your own instruction for this chat, instead of the role. "
+    "For example: answer briefly, as a film critic.":
+        "Своя инструкция для этого чата вместо роли. Например: отвечай коротко, как кинокритик.",
+    "What shall we talk about?": "О чём поговорим?",
+    "Everything stays on this computer. Pick a role above — or just start typing.":
+        "Всё остаётся на этом компьютере. Выберите роль вверху — или просто начните писать.",
+    "Come up with a plot for a 30-second video about a lighthouse":
+        "Придумай сюжет 30-секундного ролика о маяке",
+    "Write an image prompt: a cozy reading nook in the rain":
+        "Напиши промпт для картинки: уютный уголок для чтения в дождь",
+    "Explain in simple words how a neural network draws pictures":
+        "Объясни простыми словами, как нейросеть рисует картинки",
+    "Cancel": "Отмена",
+    "Message… (Ctrl+Enter — send)": "Сообщение… (Ctrl+Enter — отправить)",
+    "Message": "Сообщение",
+    "Delete chat": "Удалить чат",
+    "Delete “{title}”? This cannot be undone.": "Удалить «{title}»? Это нельзя отменить.",
+    "The first {count} messages no longer fit in the model's memory — it does not see them. "
+    "Start a new chat or choose a longer memory.":
+        "Первые сообщения ({count}) больше не помещаются в память модели — она их не видит. "
+        "Начните новый чат или увеличьте память разговора.",
+    "Send": "Отправить",
+    "~{used} / {total} tokens": "~{used} / {total} токенов",
+    "Creativity": "Творческая свобода",
+    "Lower — precise and repeatable, higher — more varied.":
+        "Меньше — точнее и предсказуемее, больше — разнообразнее.",
+    "Conversation memory": "Память разговора",
+    "Longer memory needs more video memory.": "Чем длиннее память, тем больше нужно видеопамяти.",
+    "Instruction": "Инструкция",
+    "Editing a message: the answers after it will be replaced.":
+        "Правка сообщения: ответы после него будут заменены.",
+    "Today": "Сегодня",
+    "Stop": "Остановить",
+    "Answering in another chat…": "Модель отвечает в другом чате…",
+    "No chat models yet: add one on the Models page.": "Чат-моделей пока нет: добавьте модель на странице «Модели».",
+    "Chat is not available for this computer yet.": "Для этого компьютера чат пока недоступен.",
+    "Yesterday": "Вчера",
+    "Earlier": "Ранее",
+    "Copied": "Скопировано",
+    "Writing…": "Пишет…",
+    "Auto": "Авто",
+    "Reasoning": "Рассуждения",
+    "Copy": "Копировать",
+    "Thinking…": "Думает…",
+    "The answer was cut short.": "Ответ прерван.",
+    "{speed:.0f} tokens/s": "{speed:.0f} ток/с",
+    "The model no longer sees this message: the conversation is longer than its memory.":
+        "Модель больше не видит это сообщение: разговор длиннее её памяти.",
+    "Edit and send again": "Изменить и отправить заново",
+    "Answer again": "Ответить заново",
+    "As the model's authors recommend": "Как советуют авторы модели",
+    "Think before answering": "Рассуждать перед ответом",
+    "The model reasons first: answers are more careful but take several times longer. "
+    "The reasoning is shown folded above the answer.":
+        "Модель сначала рассуждает: ответы продуманнее, но в несколько раз дольше. "
+        "Рассуждения видны свёрнутыми над ответом.",
+    # --- chat attachments ---------------------------------------------------------------
+    "“{name}” cannot be attached. Pictures, text and code, PDF, Word and video "
+    "files are supported.":
+        "«{name}» нельзя приложить. Подходят картинки, текст и код, PDF, Word и видео.",
+    "“{name}” could not be read. The file may be damaged.":
+        "Не удалось прочитать «{name}». Возможно, файл повреждён.",
+    "There is no text in “{name}”. If it is a scan, attach it as a picture.":
+        "В «{name}» нет текста. Если это скан, приложите его как картинку.",
+    "Reading PDF and Word files needs a component Tvorka does not have yet. "
+    "Reinstall Tvorka from the latest release, or copy the text into the message.":
+        "Для чтения PDF и Word нужен компонент, которого у Tvorka пока нет. Переустановите Tvorka "
+        "из свежего выпуска или скопируйте текст в сообщение.",
+    "Attach files: pictures, text, PDF, Word, video. "
+    "You can also drag them here or paste with Ctrl+V.":
+        "Приложить файлы: картинки, текст, PDF, Word, видео. Можно также перетащить их сюда "
+        "или вставить через Ctrl+V.",
+    "Attach files": "Приложить файлы",
+    "Pasted picture": "Вставленная картинка",
+    "This model does not see pictures. Choose a model marked “sees images” "
+    "or remove the pictures.":
+        "Эта модель не видит картинки. Выберите модель с пометкой «видит картинки» или уберите их.",
+    "Reading the files…": "Читаем файлы…",
+    "~{count} tokens": "~{count} ток.",
+    "Remove": "Убрать",
+    "reading…": "читаем…",
+    "{count} frames": "кадров: {count}",
+    "cut": "обрезано",
+    # --- speech recognition -------------------------------------------------------------
+    "There is no sound in this file.": "В этом файле нет звука.",
+    "The sound could not be read. The file may be damaged.":
+        "Не удалось прочитать звук. Возможно, файл повреждён.",
+    "To understand “{name}”, Tvorka needs a speech recognition model. Download Whisper "
+    "on the Models page (Speech recognition).":
+        "Чтобы понять «{name}», Tvorka нужна модель распознавания речи. Скачайте Whisper на странице "
+        "«Модели» (раздел «Распознавание речи»).",
+    "No speech was found in “{name}”.": "В «{name}» не найдено речи.",
+    "Speech recognition": "Распознавание речи",
+    "The microphone could not be used: {error}": "Не удалось включить микрофон: {error}",
+    "Voice input needs a speech recognition model. Download one on the Models page "
+    "(Speech recognition): Whisper small suits most computers.":
+        "Для голосового ввода нужна модель распознавания речи. Скачайте её на странице «Модели» "
+        "(раздел «Распознавание речи»): Whisper small подойдёт большинству компьютеров.",
+    "Recognizing…": "Распознаём…",
+    "No speech was heard. Speak a little louder or closer to the microphone.":
+        "Речь не слышна. Говорите чуть громче или ближе к микрофону.",
+    "Dictate: press, speak, press again — the text appears here":
+        "Надиктовать: нажмите, говорите, нажмите ещё раз — текст появится здесь",
+    "Stop and turn the speech into text": "Остановить и превратить речь в текст",
+    "Recognizing speech…": "Распознаём речь…",
+    "No microphone found. Connect one and allow Windows to use it "
+    "(Settings → Privacy → Microphone).":
+        "Микрофон не найден. Подключите его и разрешите Windows его использовать "
+        "(Параметры → Конфиденциальность → Микрофон).",
+    # --- video memory -------------------------------------------------------------------
+    "Stop the chat model and free memory": "Остановить чат-модель и освободить память",
+    "Chat: {name}": "Чат: {name}",
 }

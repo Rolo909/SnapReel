@@ -39,9 +39,48 @@ def engine_error(code: str, detail: str = "") -> str:
         "does_not_fit": tr("This computer cannot run the model. The reason is shown under the model name."),
         "out_of_memory": tr("Not enough video memory. Lower the resolution or choose the "
                             "“Low memory” mode in Settings."),
+        "no_sound": tr("There is no sound in this file."),
+        "unreadable": tr("The sound could not be read. The file may be damaged."),
         "failed": _unknown(),
     }
     return texts.get(code, _unknown())
+
+
+def llm_error(code: str) -> str:
+    """Why a chat answer failed (``LlmError`` codes, ``ChatWorker``)."""
+    texts = {
+        "out_of_memory": tr("Not enough memory for this chat model. Close other programs, choose a shorter "
+                            "conversation memory or a smaller model."),
+        "load_failed": tr("The chat model could not be loaded. Its file may be damaged — delete it on the "
+                          "Models page and download it again."),
+        "unsupported": tr("This version of the chat engine cannot run this model."),
+        "timeout": tr("The chat model took too long to load. Try again or choose a smaller model."),
+        "crashed": tr("The chat engine stopped unexpectedly. Send the message again — it will restart. "
+                      "Details are in the log."),
+        "not_running": tr("The chat engine stopped unexpectedly. Send the message again — it will restart. "
+                          "Details are in the log."),
+        "connection": tr("The chat engine stopped unexpectedly. Send the message again — it will restart. "
+                         "Details are in the log."),
+        "context_overflow": tr("The conversation no longer fits in the model's memory. Start a new chat or "
+                               "choose a longer memory in the chat settings."),
+    }
+    return texts.get(code, _unknown())
+
+
+def attachment_error(code: str, name: str = "") -> str:
+    """Why a file could not be attached (``AttachmentError`` codes)."""
+    texts = {
+        "unsupported": tr("“{name}” cannot be attached. Pictures, text and code, PDF, Word and video "
+                          "files are supported."),
+        "unreadable": tr("“{name}” could not be read. The file may be damaged."),
+        "empty": tr("There is no text in “{name}”. If it is a scan, attach it as a picture."),
+        "needs_docs": tr("Reading PDF and Word files needs a component Tvorka does not have yet. "
+                         "Reinstall Tvorka from the latest release, or copy the text into the message."),
+        "audio": tr("To understand “{name}”, Tvorka needs a speech recognition model. Download Whisper "
+                    "on the Models page (Speech recognition)."),
+        "silent": tr("No speech was found in “{name}”."),
+    }
+    return texts.get(code, _unknown()).format(name=name)
 
 
 def stage(code: str) -> str:
@@ -98,6 +137,11 @@ def advisor_note(code: str, params: dict[str, Any]) -> str:
                            "details may repeat."),
         "vram_busy": tr("Other programs occupy video memory ({free:.1f} GB free) — "
                         "close them for full speed."),
+        "llm_partial": tr("{share} % of the model fits on the graphics card, the rest runs on the "
+                          "processor — answers come slower."),
+        "llm_cpu": tr("Answers are written by the processor: a few words per second."),
+        "llm_moe": tr("The experts of {layers} of {total} layers stay in RAM, the rest is on the graphics "
+                      "card: each word needs only a few experts."),
     }
     text = texts.get(code, "")
     try:
@@ -115,6 +159,9 @@ def hub_error(code: str) -> str:
         "bad_id": tr("Enter the model as “author/name” or paste a link to its Hugging Face page."),
         "addon": tr("This is an add-on (LoRA, adapter or ControlNet), not a standalone model."),
         "unsupported": tr("Tvorka cannot run this kind of model yet."),
+        "projector": tr("This file only lets a chat model see images (mmproj). "
+                        "Choose the model file itself."),
+        "checksum": tr("The downloaded file is damaged. Try downloading it again."),
         "disk": tr("Not enough disk space for the download. Free some space or choose another "
                    "models folder in Settings."),
         "failed": _unknown(),

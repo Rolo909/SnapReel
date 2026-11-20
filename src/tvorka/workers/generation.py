@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any
 
@@ -15,6 +16,7 @@ from tvorka.core.advisor import Plan
 from tvorka.core.catalog import Catalog
 from tvorka.core.hardware import Hardware
 from tvorka.core.jobs import History, Job
+from tvorka.core.memory import VideoMemory
 from tvorka.core.settings import Settings
 from tvorka.core.store import ModelStore
 from tvorka.engines.base import (
@@ -57,11 +59,29 @@ class GenerationWorker(QThread):
         self._engine: Engine | None = None
         self._hardware: Hardware | None = None
         self._stopping = False
+        self._busy = threading.RLock()  # held while the engine is used; the arbiter waits on it
+        self._memory: VideoMemory | None = None
         self.current_job: int | None = None
 
     # --- called from the GUI thread ------------------------------------
     def set_hardware(self, hardware: Hardware) -> None:
         self._hardware = hardware
+
+    def attach_memory(self, memory: VideoMemory) -> None:
+        """Share the graphics card with the chat server through ``memory``."""
+        self._memory = memory
+        memory.register("generation", self._release)
+
+    def _release(self, cancelled: Callable[[], bool]) -> bool:
+        """Called from another thread: unload the model once the current job is done."""
+        while not self._busy.acquire(timeout=0.2):
+            if cancelled():
+                return False
+        try:
+            self._drop_engine()
+        finally:
+            self._busy.release()
+        return True
 
     def submit(self, job: Job) -> int:
         with self._lock:
@@ -136,8 +156,12 @@ class GenerationWorker(QThread):
             spec = self._catalog.get(job.model_id)
             if spec is None:
                 raise EngineError("model_missing", job.model_id)
-            plan = self._plan(spec, job)
-            results = self._attempt(spec, plan, job, ctx)
+            plan, vram_gb = self._plan(spec, job)
+            if self._memory is not None and not self._memory.claim(
+                    "generation", spec.id, vram_gb, lambda: self._is_cancelled(job.id)):
+                raise Cancelled
+            with self._busy:
+                results = self._attempt(spec, plan, job, ctx)
             if not job.get("preview"):  # voice samples and other previews stay out of the gallery
                 for result in results:
                     self._history.add(result)
@@ -158,9 +182,10 @@ class GenerationWorker(QThread):
             if not self._settings.keep_model_loaded:
                 self._drop_engine()
 
-    def _plan(self, spec: Any, job: Job) -> Plan:
+    def _plan(self, spec: Any, job: Job) -> tuple[Plan, float]:
+        """The memory plan for the job and the video memory it needs."""
         if self._hardware is None:
-            return Plan()
+            return Plan(), 0.0
         width, height = int(job.get("width", spec.native[0])), int(job.get("height", spec.native[1]))
         frames = 1
         if spec.kind in ("image", "video"):  # memory depends on what the model draws, not the final size
@@ -175,7 +200,7 @@ class GenerationWorker(QThread):
                              reference=reference)
         if not fit.ok:
             raise EngineError("does_not_fit", spec.name)
-        return fit.plan
+        return fit.plan, fit.need_vram_gb
 
     def _attempt(self, spec: Any, plan: Plan, job: Job, ctx: Context) -> list[Any]:
         """Run a job, stepping down to a leaner memory plan if the GPU runs out."""
@@ -196,24 +221,29 @@ class GenerationWorker(QThread):
         engine = self._engine
         if engine is not None and engine.spec.id == spec.id and engine.plan == plan:
             return engine
-        self._drop_engine()
+        self._drop_engine(keep_claim=True)  # the memory for the new model is already claimed
         engine = create_engine(spec, plan)
         try:
             engine.load(ctx)
         except BaseException:
             engine.unload()
+            if self._memory is not None:
+                self._memory.released("generation")  # nothing of it stayed on the card
             raise
         ctx.check()
         self._engine = engine
         self.model_changed.emit(spec.id)
         return engine
 
-    def _drop_engine(self) -> None:
-        if self._engine is not None:
-            try:
-                self._engine.unload()
-            except Exception:
-                log.exception("unload failed")
-            self._engine = None
-            self.model_changed.emit("")
-        free_memory()
+    def _drop_engine(self, keep_claim: bool = False) -> None:
+        with self._busy:
+            if self._engine is not None:
+                try:
+                    self._engine.unload()
+                except Exception:
+                    log.exception("unload failed")
+                self._engine = None
+                self.model_changed.emit("")
+            free_memory()
+            if self._memory is not None and not keep_claim:
+                self._memory.released("generation")

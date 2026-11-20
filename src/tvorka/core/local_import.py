@@ -1,13 +1,16 @@
 """Turn a model the user already has on disk into a :class:`ModelSpec`.
 
 Supported: a diffusers folder (``model_index.json``), a single Stable Diffusion
-checkpoint (``.safetensors`` / ``.ckpt``), a transformers TTS folder (VITS / Bark)
-and a Silero ``.pt`` package. Memory is estimated from the files on disk.
+checkpoint (``.safetensors`` / ``.ckpt``), a transformers TTS folder (VITS / Bark),
+a Silero ``.pt`` package and a GGUF chat model (a ``.gguf`` file, or a folder with
+one; a ``mmproj`` file next to it lets the model see images). Memory is estimated
+from the files on disk.
 Local files are never modified or deleted by the app.
 """
 
 from __future__ import annotations
 
+import glob
 import json
 import re
 import zipfile
@@ -21,8 +24,10 @@ from tvorka.core.hub import (
     HubError,
     _fill_diffusers_defaults,
     _fit_sd_generation,
+    fill_chat_spec,
     plan_files,
 )
+from tvorka.core.llm import gguf
 
 SINGLE_FILE_EXT = (".safetensors", ".ckpt")
 # Families a single checkpoint can be loaded as (``from_single_file``).
@@ -44,6 +49,11 @@ def spec_from_path(path: str | Path, kind_hint: str | None = None) -> ModelSpec:
             return _diffusers_folder(target, kind_hint)
         if (target / "config.json").is_file():
             return _tts_folder(target)
+        quants = gguf.group_quants([(p.name, p.stat().st_size) for p in target.glob("*.gguf")])
+        if len(quants) == 1:
+            return _gguf_file(target / quants[0]["files"][0])
+        if quants:  # several quantizations: the user picks the file
+            raise HubError("unsupported", f"{target}: {len(quants)} GGUF variants, choose one file")
         silero = sorted(target.glob("*.pt"))
         if len(silero) == 1 and is_silero_package(silero[0]):
             return _silero_file(silero[0])
@@ -53,6 +63,8 @@ def spec_from_path(path: str | Path, kind_hint: str | None = None) -> ModelSpec:
         return _single_file(target)
     if suffix == ".pt" and is_silero_package(target):
         return _silero_file(target)
+    if suffix == ".gguf":
+        return _gguf_file(target)
     raise HubError("unsupported", str(target))
 
 
@@ -232,3 +244,38 @@ def _silero_file(file: Path) -> ModelSpec:
     if lang:
         spec.languages = [lang.group(1)]
     return spec
+
+
+def _gguf_file(file: Path) -> ModelSpec:
+    try:
+        with open(file, "rb") as handle:
+            info = gguf.read_header(handle)
+    except (OSError, gguf.GgufError) as exc:
+        raise HubError("unsupported", f"{file.name}: {exc}") from exc
+    if info.is_projector or gguf.is_projector_file(file.name):
+        raise HubError("projector", file.name)
+    folder = file.parent
+    parts = [file]
+    shard = _SHARD.search(file.name)
+    if shard:  # a model split into parts is loaded through the first one
+        found = sorted(folder.glob(f"{glob.escape(file.name[: shard.start()])}-*-of-{shard.group(2)}.gguf"))
+        parts = found or parts
+    quant = gguf.quant_name(parts[0].name) or info.quant or "GGUF"
+    quants = [{"name": quant, "files": [p.name for p in parts],
+               "gb": round(sum(p.stat().st_size for p in parts) / GB, 2)}]
+    siblings = [(p.name, p.stat().st_size) for p in folder.glob("*.gguf")]
+    projector, projector_gb = gguf.pick_projector(siblings)
+    mtp, mtp_gb = gguf.pick_mtp(siblings)
+    spec = _base_spec(parts[0], "chat")
+    spec.id, spec.name = _SHARD_END.sub("", spec.id), _SHARD_END.sub("", spec.name)
+    title = str(info.get("general.name") or "")
+    if 0 < len(title) < 60:
+        spec.name = title
+    fill_chat_spec(spec, quants, info, projector=str(folder / projector) if projector else "",
+                   projector_gb=projector_gb, mtp=str(folder / mtp) if mtp else "", mtp_gb=mtp_gb)
+    spec.tags = ["local", quant]
+    return spec
+
+
+_SHARD = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$")
+_SHARD_END = re.compile(r"-\d{5}-of-\d{5}$")

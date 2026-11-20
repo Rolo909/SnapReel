@@ -17,10 +17,10 @@ from tvorka.core import paths
 
 log = logging.getLogger(__name__)
 
-KINDS = ("image", "video", "speech")
+KINDS = ("image", "video", "speech", "chat", "transcribe")
 # Built-in engine names; plugins add theirs through ``engines.base.register_engine``.
 # Entries naming an engine that is not available are skipped when a catalog is read.
-ENGINES: set[str] = {"diffusers", "silero", "transformers_tts", "edge"}
+ENGINES: set[str] = {"diffusers", "silero", "transformers_tts", "edge", "llama", "whisper"}
 # Direct-URL weights are executable (torch.package), so only these hosts are accepted.
 TRUSTED_URL_HOSTS = {"models.silero.ai"}
 
@@ -58,6 +58,20 @@ class ModelSpec:
     frame_rule: int = 1  # frame counts must be k * frame_rule + 1
     voices: list[dict[str, str]] = field(default_factory=list)
     languages: list[str] = field(default_factory=list)
+    # Chat models (GGUF): one entry per quantization, {"name": "Q4_K_M", "files": [...], "gb": 5.3}.
+    quants: list[dict[str, Any]] = field(default_factory=list)
+    mmproj: str = ""  # projector that lets the model see images (repo file, or a path for local models)
+    mmproj_gb: float = 0.0
+    context: int = 0  # longest context the model was trained for, tokens
+    layers: int = 0
+    kv_gb_per_1k: float = 0.0  # KV cache per 1024 tokens of context
+    kv_fixed_gb: float = 0.0  # KV cache that does not grow with the context (sliding-window layers)
+    capabilities: list[str] = field(default_factory=list)  # vision | tools | reasoning
+    mtp: str = ""  # draft head for multi-token prediction (repo file, or a path for local models)
+    mtp_gb: float = 0.0
+    experts: int = 0  # mixture of experts: experts per layer (0 for a dense model)
+    experts_used: int = 0  # experts each token goes through
+    expert_share: float = 0.0  # fraction of the weights in routed experts (what may stay in RAM)
     gated: bool = False
     origin: str = "builtin"  # builtin | remote | user | hub
 
@@ -74,6 +88,9 @@ class ModelSpec:
 
     def default(self, key: str, fallback: Any = None) -> Any:
         return self.defaults.get(key, fallback)
+
+    def quant(self, name: str) -> dict[str, Any] | None:
+        return next((q for q in self.quants if q.get("name") == name), None)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

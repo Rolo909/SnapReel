@@ -73,7 +73,7 @@ def test_main_window_navigation(services: Services, qtbot) -> None:
 
     window = MainWindow(services, build_pages(services, None))
     qtbot.addWidget(window)
-    window.open_page(3)
+    window.open_page(4)
     assert window.current_page().key == "models"
     window.open_page(99)
     assert window.current_page().key == "models"

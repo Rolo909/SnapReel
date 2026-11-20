@@ -1,0 +1,92 @@
+{
+  "_comment": "llama.cpp server builds Tvorka downloads on demand (core/llm/runtime.py). Pinned to one release; every archive is checked against its SHA-256 before it is unpacked. Update all entries together, from the release's asset list.",
+  "version": "b12320",
+  "builds": {
+    "win-cuda-13": {
+      "vendor": "nvidia",
+      "min_driver": 580,
+      "files": [
+        {
+          "name": "llama-b12320-bin-win-cuda-13.5-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-win-cuda-13.5-x64.zip",
+          "size": 178039504,
+          "sha256": "5a0714116544dbb9fb0b71eb5eae11b662e625a11aedc446b156607fe16f0668"
+        },
+        {
+          "name": "cudart-llama-bin-win-cuda-13.5-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/cudart-llama-bin-win-cuda-13.5-x64.zip",
+          "size": 426314199,
+          "sha256": "c2bf4cc202bfbaaa7a0b75f5082457c3811326947bb216059b72839d844e9cba"
+        }
+      ]
+    },
+    "win-cuda-12": {
+      "vendor": "nvidia",
+      "min_driver": 551,
+      "files": [
+        {
+          "name": "llama-b12320-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-win-cuda-12.4-x64.zip",
+          "size": 317247844,
+          "sha256": "d58cded0abebfff8b50a5a480dccb61b046bcf9a40e67e12970d1b277df7c5b5"
+        },
+        {
+          "name": "cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/cudart-llama-bin-win-cuda-12.4-x64.zip",
+          "size": 391443627,
+          "sha256": "8c79a9b226de4b3cacfd1f83d24f962d0773be79f1e7b75c6af4ded7e32ae1d6"
+        }
+      ]
+    },
+    "win-vulkan": {
+      "files": [
+        {
+          "name": "llama-b12320-bin-win-vulkan-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-win-vulkan-x64.zip",
+          "size": 38052667,
+          "sha256": "f430b98766228baa81fdc0a55c17aad723d86938d08699c8fc44924cfc33ae29"
+        }
+      ]
+    },
+    "win-cpu": {
+      "files": [
+        {
+          "name": "llama-b12320-bin-win-cpu-x64.zip",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-win-cpu-x64.zip",
+          "size": 25084274,
+          "sha256": "08b6659fc40ba62a8d07c886d6bc873d00735b1411776507eed18a41f336ab35"
+        }
+      ]
+    },
+    "macos-arm64": {
+      "files": [
+        {
+          "name": "llama-b12320-bin-macos-arm64.tar.gz",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-macos-arm64.tar.gz",
+          "size": 16896039,
+          "sha256": "b83dad7c9202b40e4f00405c55a116d50b3b995093b5dbe1262ecd518d039ee0"
+        }
+      ]
+    },
+    "linux-vulkan": {
+      "files": [
+        {
+          "name": "llama-b12320-bin-ubuntu-vulkan-x64.tar.gz",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-ubuntu-vulkan-x64.tar.gz",
+          "size": 36126727,
+          "sha256": "eb1537942e188032b5aa57ea0394b65bc035b29cb0dd15bfcf498419efabdff2"
+        }
+      ]
+    },
+    "linux-cpu": {
+      "files": [
+        {
+          "name": "llama-b12320-bin-ubuntu-x64.tar.gz",
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b12320/llama-b12320-bin-ubuntu-x64.tar.gz",
+          "size": 23311141,
+          "sha256": "66e2c8509052c191fddc4c13c846c7388c07fce519c6b42f8496daf1cf14a793"
+        }
+      ]
+    }
+  }
+}

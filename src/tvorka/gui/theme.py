@@ -194,6 +194,15 @@ QLabel[role="link"] { color: $accent_text; }
 #Card { background: $panel; border: 1px solid $line; border-radius: 10px; }
 #Banner { background: $raised; border: 1px solid $line; border-radius: 8px; }
 #Stage { background: $panel; border: 1px solid $line; border-radius: 12px; }
+#ChatList { background: $panel; border-right: 1px solid $line; }
+#ChatBubble[who="user"] { background: $raised; border: 1px solid $line; border-radius: 12px; }
+#Composer { background: $panel; border: 1px solid $line; border-radius: 12px; }
+#Composer QPlainTextEdit { background: transparent; border: none; font-size: 11pt; padding: 4px 2px; }
+QLabel[role="chat"] { font-size: 10.5pt; }
+#Chip { background: $raised; border: 1px solid $line; border-radius: 8px; }
+QToolButton[recording="true"] { color: $bad; border: 1px solid $bad; border-radius: 6px; }
+#Page[dropping="true"] #Composer { border: 1px dashed $accent; }
+QLabel[role="group"] { color: $faint; font-size: 8.5pt; font-weight: 600; padding: 8px 4px 2px 4px; }
 QFrame[role="rule"] { background: $line; max-height: 1px; min-height: 1px; border: none; }
 QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }
 QListWidget { background: transparent; border: none; }

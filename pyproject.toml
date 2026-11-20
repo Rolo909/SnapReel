@@ -36,9 +36,14 @@ dependencies = [
 online = [
     "edge-tts>=6.1",
 ]
+# Text from PDF and Word files attached to a chat; without them such files get a clear hint.
+docs = [
+    "pypdf>=5.0",
+    "python-docx>=1.1",
+]
 # Exactly one PyTorch flavour is installed: the first-run installer picks it by the graphics card
 # (the table is src/tvorka/data/gpu_support.json).
-#   uv sync --extra cu130 --extra online                      NVIDIA graphics (Windows, Linux)
+#   uv sync --extra cu130 --extra online --extra docs         NVIDIA graphics (Windows, Linux)
 #   uv sync --python 3.13 --extra rocm-gfx110x --extra online AMD Radeon RX 7000 and others, see below
 #   uv sync --extra xpu --extra online                        Intel Arc (discrete and Core Ultra)
 #   uv sync --extra cpu --extra online                        everything else (and macOS: Apple GPUs)

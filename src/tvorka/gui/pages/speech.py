@@ -29,6 +29,7 @@ from tvorka.gui.services import Services
 from tvorka.gui.widgets.basic import Card, Field, Segmented, SliderField, label, tool_button
 from tvorka.gui.widgets.feedback import ToastHost
 from tvorka.gui.widgets.fit import FitBanner
+from tvorka.gui.widgets.mic import MicButton
 from tvorka.gui.widgets.model_card import size_text
 from tvorka.gui.widgets.waveform import WaveformView
 from tvorka.i18n import language, messages, tr
@@ -144,7 +145,11 @@ class SpeechPage(Page):
         self.text.textChanged.connect(self._text_changed)
         column.addWidget(self.text)
         self.counter = label("", "faint")
-        column.addWidget(self.counter)
+        counter_row = QHBoxLayout()
+        counter_row.addWidget(self.counter, 1)
+        self.mic = MicButton(self, self.text)
+        counter_row.addWidget(self.mic)
+        column.addLayout(counter_row)
 
         model_card = Card(tr("Model"))
         self.model_box = QComboBox()

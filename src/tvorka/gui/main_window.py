@@ -104,7 +104,9 @@ class MainWindow(QMainWindow):
 
         services.hardware_ready.connect(self._on_hardware)
         services.update_available.connect(self._on_update)
+        self._models = {"generation": "", "chat": ""}  # what each one holds in memory
         services.worker.model_changed.connect(self._on_model_changed)
+        services.chat_worker.model_changed.connect(self._on_chat_model)
         services.worker.queue_changed.connect(self._on_queue)
         self._live = QTimer(self)
         self._live.setInterval(2000)
@@ -115,6 +117,8 @@ class MainWindow(QMainWindow):
             self._on_hardware(services.hardware)
         if services.worker.loaded_model:
             self._on_model_changed(services.worker.loaded_model)
+        if services.chat_worker.loaded_model:
+            self._on_chat_model(services.chat_worker.loaded_model)
 
     # --- footer --------------------------------------------------------------------
     def _build_footer(self) -> QWidget:
@@ -145,6 +149,16 @@ class MainWindow(QMainWindow):
         row.addWidget(self.model_label, 1)
         row.addWidget(self.unload_button)
         inner.addLayout(row)
+        chat_row = QHBoxLayout()
+        chat_row.setSpacing(4)
+        self.chat_label = label("", "muted", wrap=True)
+        self.chat_label.setVisible(False)
+        self.chat_unload = tool_button("close", tr("Stop the chat model and free memory"))
+        self.chat_unload.setVisible(False)
+        self.chat_unload.clicked.connect(self.services.chat_worker.unload)
+        chat_row.addWidget(self.chat_label, 1)
+        chat_row.addWidget(self.chat_unload)
+        inner.addLayout(chat_row)
         self.queue_label = label("", "muted")
         self.queue_label.setVisible(False)
         inner.addWidget(self.queue_label)
@@ -184,11 +198,26 @@ class MainWindow(QMainWindow):
         self.vram_label.setText(tr("VRAM {used:.1f} / {total:.1f} GB", used=used, total=total))
 
     def _on_model_changed(self, model_id: str) -> None:
-        spec = self.services.catalog.get(model_id) if model_id else None
+        self._models["generation"] = model_id
+        self._show_models()
+
+    def _on_chat_model(self, model_id: str) -> None:
+        """The chat model has its own line: it can sit in memory next to an image model."""
+        self._models["chat"] = model_id
+        self._show_models()
+
+    def _show_models(self) -> None:
+        catalog = self.services.catalog
+        spec = catalog.get(self._models["generation"]) if self._models["generation"] else None
+        chat = catalog.get(self._models["chat"]) if self._models["chat"] else None
         self.model_label.setText(tr("In memory: {name}", name=spec.name) if spec else tr("No model loaded"))
+        self.model_label.setVisible(spec is not None or chat is None)
         self.model_label.setProperty("role", "muted" if spec else "faint")
         self.model_label.style().polish(self.model_label)
         self.unload_button.setVisible(spec is not None)
+        self.chat_label.setText(tr("Chat: {name}", name=chat.name) if chat else "")
+        self.chat_label.setVisible(chat is not None)
+        self.chat_unload.setVisible(chat is not None)
         self._refresh_memory()
 
     def _on_update(self, release: object) -> None:

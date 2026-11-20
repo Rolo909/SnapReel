@@ -13,14 +13,17 @@ store first, and snapshot_download only lays out what is already on disk.
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import os
 import shutil
 import sys
+import tarfile
 import threading
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -147,11 +150,14 @@ def _drop_duplicate_blobs(repo_dir: Path) -> None:
 def _download_hf(task: dict[str, Any]) -> dict[str, Any]:
     from huggingface_hub import snapshot_download
 
-    from tvorka.core.hub import plan_files, repo_siblings
+    from tvorka.core.hub import plan_files, plan_named, repo_siblings
 
     token = os.environ.get("HF_TOKEN") or None
     _info, siblings = repo_siblings(task["repo"], token)
-    plan = plan_files(siblings, prefer_half=bool(task.get("prefer_half", True)))
+    if task.get("only"):
+        plan = plan_named(siblings, list(task["only"]))
+    else:
+        plan = plan_files(siblings, prefer_half=bool(task.get("prefer_half", True)))
     if not plan.files:
         raise RuntimeError("repository has no downloadable model files")
     repo_dir = Path(task["hub_dir"]) / f"models--{task['repo'].replace('/', '--')}"
@@ -214,11 +220,47 @@ def _download_urls(task: dict[str, Any]) -> dict[str, Any]:
                         emit("progress", done=done_before + have, total=total or have)
         if size and have != size:
             raise RuntimeError(f"incomplete download of {item['name']}")
+        if item.get("sha256") and sha256(partial) != str(item["sha256"]).lower():
+            partial.unlink(missing_ok=True)  # a damaged file must not be resumed
+            raise DownloadError("checksum", item["name"])
         partial.replace(target)
         done_before += have
+    names = [f["name"] for f in files]
+    archives = [dest / f["name"] for f in files if f.get("extract")]
+    if archives:  # program archives: unpacked side by side (the server needs its DLLs next to it)
+        unpacked = dest / "bin"
+        for archive in archives:
+            unpack(archive, unpacked)
+            archive.unlink()
+        return {"path": str(unpacked), "variant": None, "bytes": done_before, "files": names,
+                "components": {}}
     first = dest / files[0]["name"]
     return {"path": str(first if len(files) == 1 else dest), "variant": None,
-            "bytes": done_before, "files": [f["name"] for f in files], "components": {}}
+            "bytes": done_before, "files": names, "components": {}}
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while chunk := handle.read(1 << 20):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def unpack(archive: Path, dest: Path) -> None:
+    """Extract a .zip or .tar.gz into ``dest``; entries pointing outside it are refused."""
+    dest.mkdir(parents=True, exist_ok=True)
+    root = dest.resolve()
+    if archive.name.endswith((".tar.gz", ".tgz")):
+        with tarfile.open(archive) as bundle:
+            bundle.extractall(dest, filter="data")  # rejects absolute paths, "..", device files
+        return
+    with zipfile.ZipFile(archive) as bundle:
+        for member in bundle.infolist():
+            target = (dest / member.filename).resolve()
+            if not target.is_relative_to(root):
+                raise DownloadError("failed", f"unsafe path in {archive.name}: {member.filename}")
+        bundle.extractall(dest)
 
 
 def _exit_when_parent_closes_stdin() -> None:

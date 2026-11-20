@@ -76,3 +76,34 @@ def test_local_model_preview_and_add(page: ModelsPage, tmp_path: Path, qtbot) ->
     qtbot.waitUntil(lambda: page._preview_spec is not None, timeout=5000)
     page._add_previewed()
     assert page.services.catalog.get("local/v4_ru") is not None
+
+
+def test_chat_models_download_one_quantization(page: ModelsPage, monkeypatch) -> None:
+    from tvorka.core.hardware import GpuInfo, Hardware, TorchBuild
+
+    page.kind.set_value("chat")
+    page._kind_changed("chat")
+    assert visible_cards(page) and {c.spec.kind for c in visible_cards(page)} == {"chat"}
+    gpu = GpuInfo("RTX 3060", "nvidia", 8.0, 7.5, "617.14")
+    page.services._on_hardware(Hardware("Test OS", "Test CPU", 6, 12, 16.0, 10.0, 8.0, (gpu,),
+                                        TorchBuild(True, "2.14", "13.0")))
+    card = page._cards["unsloth/Qwen3.5-9B-GGUF"]
+    assert card.details.text().startswith("Q4_K_M")
+    assert card.size.text() == "6.2 ГБ"  # Q4_K_M + projector, not the whole repository
+    started = []
+    monkeypatch.setattr(page.services.downloads, "start", lambda spec, only=None: started.append(only))
+    card.primary.click()
+    assert started == [["Qwen3.5-9B-Q4_K_M.gguf", "mmproj-F16.gguf"]]
+
+
+def test_gguf_file_can_be_added(page: ModelsPage, make_gguf, qtbot) -> None:
+    file = make_gguf("Tiny-Q4_K_M.gguf")
+    page._toggle_add()
+    page.source.set_value("file")
+    page._source_changed("file")
+    page.source_edit.setText(str(file))
+    page._recognize()
+    qtbot.waitUntil(lambda: page._preview_spec is not None, timeout=5000)
+    assert page._preview_spec.kind == "chat"
+    page._add_previewed()
+    assert page.services.catalog.get("local/tiny-q4_k_m") is not None

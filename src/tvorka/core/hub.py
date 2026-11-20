@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from tvorka.core.catalog import ModelSpec
+from tvorka.core.llm import gguf
 
 log = logging.getLogger(__name__)
 
@@ -112,6 +113,20 @@ def plan_files(siblings: list[tuple[str, int]], prefer_half: bool = True) -> Dow
     return plan
 
 
+def plan_named(siblings: list[tuple[str, int]], names: list[str]) -> DownloadPlan:
+    """Exactly ``names`` (one quantization of a GGUF repo and its projector)."""
+    sizes = dict(siblings)
+    missing = [n for n in names if n not in sizes]
+    if missing:
+        raise HubError("not_found", ", ".join(missing))
+    plan = DownloadPlan(files=list(names), has_index=False)
+    for name in names:
+        plan.sizes[name] = sizes[name]
+        plan.total_bytes += sizes[name]
+    plan.components["model"] = plan.total_bytes
+    return plan
+
+
 def _api(token: str | None) -> Any:
     from huggingface_hub import HfApi
 
@@ -165,7 +180,9 @@ def search(kind: str, query: str = "", limit: int = 40, token: str | None = None
 
 def _search(kind: str, query: str, limit: int, token: str | None) -> list[HubHit]:
     api = _api(token)
-    if kind == "speech":
+    if kind == "chat":
+        requests = [("text-generation", "gguf"), ("image-text-to-text", "gguf")]
+    elif kind == "speech":
         requests = [("text-to-speech", "vits"), ("text-to-speech", "bark")]
     elif kind == "video":
         requests = [("text-to-video", "diffusers"), ("image-to-video", "diffusers")]
@@ -178,7 +195,10 @@ def _search(kind: str, query: str, limit: int, token: str | None) -> list[HubHit
                 pipeline_tag=tag, filter=library, search=query or None, sort="downloads", limit=limit
             ):
                 tags = list(m.tags or [])
-                if _is_addon(tags) or _is_quantized_export(m.id):
+                if kind == "chat":
+                    if "gguf" not in m.id.lower():  # the library tag alone also marks the originals
+                        continue
+                elif _is_addon(tags) or _is_quantized_export(m.id):
                     continue
                 hits[m.id] = HubHit(m.id, kind, int(m.downloads or 0), int(m.likes or 0),
                                     bool(m.gated), tags)
@@ -238,6 +258,8 @@ def spec_from_repo(
     if repo_id.count("/") != 1:
         raise HubError("bad_id", repo_id)
     info, siblings = repo_siblings(repo_id, token)
+    if "model_index.json" not in dict(siblings) and any(n.endswith(".gguf") for n, _ in siblings):
+        return _chat_spec_from_repo(repo_id, info, siblings, token)
     plan = plan_files(siblings)
     tags = list(info.tags or [])
     kind = KIND_BY_TAG.get(info.pipeline_tag or "") or kind_hint
@@ -283,6 +305,81 @@ def spec_from_repo(
             spec.voices = [{"id": f"v2/en_speaker_{i}", "name": f"English {i}"} for i in (6, 9)]
     if not spec.memory:
         raise HubError("unsupported", repo_id)
+    return spec
+
+
+# ------------------------------------------------------------------ chat models (GGUF)
+HEADER_BYTES = 4 * 1024**2  # enough for the model keys; the vocabulary that follows is not needed
+
+
+def fill_chat_spec(spec: ModelSpec, quants: list[dict[str, Any]], info: gguf.GgufInfo,
+                   template: str = "", projector: str = "", projector_gb: float = 0.0,
+                   mtp: str = "", mtp_gb: float = 0.0) -> ModelSpec:
+    """Describe a GGUF chat model from its quantizations (``gguf.group_quants``) and header.
+
+    ``info`` is the header of the first file of ``quants[0]``.
+    """
+    spec.kind, spec.engine = "chat", "llama"
+    spec.quants = quants
+    spec.mmproj, spec.mmproj_gb = projector, projector_gb
+    spec.mtp, spec.mtp_gb = mtp, mtp_gb
+    spec.layers, spec.context = info.layers, info.context
+    spec.kv_gb_per_1k, spec.kv_fixed_gb = (round(v, 4) for v in info.kv_cache())
+    spec.experts, spec.experts_used = info.experts, info.experts_used
+    first = quants[0]
+    spec.expert_share = info.expert_share(first["gb"], gguf.quant_bits(first["name"]) or 4.9)
+    spec.capabilities = gguf.capabilities(template or info.chat_template, bool(projector))
+    spec.memory = {}
+    usual = [q for q in spec.quants if gguf.quant_bits(q["name"]) <= 4.9] or spec.quants[:1]
+    spec.download_gb = round(usual[-1]["gb"] + projector_gb + mtp_gb, 2)
+    return spec
+
+
+def remote_header(repo_id: str, filename: str, token: str | None = None) -> gguf.GgufInfo:
+    """The start of a GGUF file on the Hub, read with one range request."""
+    import io
+    import urllib.request
+    from urllib.parse import quote
+
+    url = f"https://huggingface.co/{repo_id}/resolve/main/{quote(filename)}"
+    headers = {"Range": f"bytes=0-{HEADER_BYTES - 1}", "User-Agent": "Tvorka"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=30) as response:
+            data = response.read(HEADER_BYTES)
+    except Exception as exc:
+        if is_network_error(exc) or isinstance(exc, OSError):
+            raise HubError("network", str(exc)) from exc
+        raise
+    try:
+        return gguf.read_header(io.BytesIO(data))
+    except gguf.GgufError as exc:
+        raise HubError("unsupported", f"{repo_id}/{filename}: {exc}") from exc
+
+
+def _chat_spec_from_repo(repo_id: str, info: Any, siblings: list[tuple[str, int]],
+                         token: str | None) -> ModelSpec:
+    files = [(n, s) for n, s in siblings if n.endswith(".gguf")]
+    quants = gguf.group_quants(files)
+    projector, projector_gb = gguf.pick_projector(files)
+    mtp, mtp_gb = gguf.pick_mtp(files)
+    if not quants:
+        raise HubError("projector" if projector else "unsupported", repo_id)
+    header = remote_header(repo_id, quants[0]["files"][0], token)
+    meta = getattr(info, "gguf", None) or {}
+    card = info.card_data or {}
+    name = repo_id.split("/")[1]
+    for suffix in ("-GGUF", "_GGUF", "-gguf", "_gguf"):
+        name = name.removesuffix(suffix)
+    spec = ModelSpec(
+        id=repo_id, name=name.replace("_", " "), kind="chat", engine="llama", author=repo_id.split("/")[0],
+        origin="user", gated=bool(info.gated), tags=["custom"],
+        license=str(card.get("license") or "") if card else "",
+    )
+    fill_chat_spec(spec, quants, header, str(meta.get("chat_template") or ""), projector, projector_gb,
+                   mtp, mtp_gb)
+    spec.context = int(meta.get("context_length") or 0) or spec.context
     return spec
 
 

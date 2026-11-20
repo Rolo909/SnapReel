@@ -5,18 +5,49 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QProgressBar, QPushButton, QVBoxLayout
 
-from tvorka.core.advisor import Fit
+from tvorka.core.advisor import Fit, LlmPlan
 from tvorka.core.catalog import ModelSpec
 from tvorka.gui import icons
 from tvorka.gui.widgets.basic import label, tool_button
 from tvorka.gui.widgets.fit import VERDICT_TOKEN
 from tvorka.i18n import language, messages, tr
 
-KIND_ICON = {"image": "image", "video": "video", "speech": "voice"}
+KIND_ICON = {"image": "image", "video": "video", "speech": "voice", "chat": "chat", "transcribe": "mic"}
 
 
 def kind_name(kind: str) -> str:
-    return {"image": tr("Image"), "video": tr("Video"), "speech": tr("Voice")}.get(kind, kind)
+    names = {"image": tr("Image"), "video": tr("Video"), "speech": tr("Voice"), "chat": tr("Chat"),
+             "transcribe": tr("Speech recognition")}
+    return names.get(kind, kind)
+
+
+def chat_download_gb(spec: ModelSpec, fit: Fit | None) -> float:
+    """What downloading a chat model takes: the quantization the advisor picked, projector, MTP head."""
+    quant = spec.quant(fit.plan.quant) if fit is not None and isinstance(fit.plan, LlmPlan) else None
+    return round(quant["gb"] + spec.mmproj_gb + spec.mtp_gb, 2) if quant else spec.download_gb
+
+
+def chat_download_files(spec: ModelSpec, fit: Fit | None) -> list[str]:
+    """Files of a chat model to download: the advisor's quantization, projector, MTP head.
+
+    Empty until the advisor has judged this computer.
+    """
+    quant = spec.quant(fit.plan.quant) if fit is not None and isinstance(fit.plan, LlmPlan) else None
+    if quant is None:
+        return []
+    return [*quant["files"], *([spec.mmproj] if spec.mmproj else []), *([spec.mtp] if spec.mtp else [])]
+
+
+def chat_details(spec: ModelSpec, fit: Fit | None) -> str:
+    """``Q4_K_M · remembers 8K tokens · sees images`` — what the user gets on this computer."""
+    parts = []
+    if fit is not None and isinstance(fit.plan, LlmPlan):
+        if fit.plan.quant:
+            parts.append(fit.plan.quant)
+        parts.append(tr("remembers {count}K tokens of the conversation", count=fit.plan.ctx // 1024))
+    if "vision" in spec.capabilities:
+        parts.append(tr("sees images"))
+    return "  ·  ".join(parts)
 
 
 def size_text(gb: float) -> str:
@@ -67,6 +98,9 @@ class ModelCard(QFrame):
         summary = spec.text(language())
         if summary:
             info.addWidget(label(summary, "muted", wrap=True))
+        self.details = label("", "faint", wrap=True)
+        self.details.setVisible(spec.kind == "chat")
+        info.addWidget(self.details)
         self.verdict = label("", "muted")
         self.verdict.setWordWrap(True)
         info.addWidget(self.verdict)
@@ -119,12 +153,13 @@ class ModelCard(QFrame):
         self.delete_button.setVisible(installed and not busy and spec.source in ("hf", "url", "local"))
         self.delete_button.setToolTip(tr("Remove from the list") if spec.source == "local"
                                       else tr("Delete from disk"))
+        download_gb = chat_download_gb(spec, fit) if spec.kind == "chat" else spec.download_gb
         if spec.source == "online":
             self.size.setText(tr("no download"))
         elif installed:
-            self.size.setText(tr("installed · {size}", size=size_text(on_disk_gb or spec.download_gb)))
+            self.size.setText(tr("installed · {size}", size=size_text(on_disk_gb or download_gb)))
         else:
-            self.size.setText(size_text(spec.download_gb))
+            self.size.setText(size_text(download_gb))
         if busy:
             done, total, speed = downloading
             fraction = done / total if total else 0.0
@@ -146,6 +181,8 @@ class ModelCard(QFrame):
         self._show_fit(fit)
 
     def _show_fit(self, fit: Fit | None) -> None:
+        if self.spec.kind == "chat":
+            self.details.setText(chat_details(self.spec, fit))
         if fit is None:
             self.verdict.setText(tr("Checking this computer…"))
             self._role("faint")

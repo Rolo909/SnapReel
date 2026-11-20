@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from tvorka.core.catalog import ModelSpec
+from tvorka.core.llm import gguf
 from tvorka.core.settings import Settings
 
 log = logging.getLogger(__name__)
@@ -103,13 +104,46 @@ class ModelStore:
             shutil.rmtree(self.files_dir(spec), ignore_errors=True)
         self.manifest_path(spec).unlink(missing_ok=True)
 
-    def download_task(self, spec: ModelSpec) -> dict[str, Any]:
-        """Serializable description consumed by the download subprocess."""
+    def chat_files(self, spec: ModelSpec) -> tuple[Path | None, Path | None]:
+        """A chat model's GGUF file to load (the first part of a split one) and its projector."""
+        if spec.source == "local":
+            model = Path(spec.path) if spec.path else None
+            return model, Path(spec.mmproj) if spec.mmproj else None
+        location, manifest = self.location(spec), self.manifest(spec) or {}
+        if location is None:
+            return None, None
+        names = [str(n) for n in manifest.get("files", [])]
+        models = sorted(n for n in names if gguf.is_model_file(n))
+        projectors = [n for n in names if gguf.is_projector_file(n)]
+        return (location / models[0] if models else None,
+                location / projectors[0] if projectors else None)
+
+    def chat_mtp(self, spec: ModelSpec) -> Path | None:
+        """A chat model's multi-token prediction head, None when it has none on disk."""
+        if spec.source == "local":
+            return Path(spec.mtp) if spec.mtp else None
+        location, manifest = self.location(spec), self.manifest(spec) or {}
+        names = [str(n) for n in manifest.get("files", []) if gguf.is_mtp_file(str(n))]
+        return location / names[0] if location is not None and names else None
+
+    def chat_quant(self, spec: ModelSpec) -> str:
+        """The quantization on disk, "" when the chat model is not installed."""
+        if spec.source == "local":
+            return spec.quants[0]["name"] if spec.quants else ""
+        model, _projector = self.chat_files(spec)
+        return gguf.quant_name(model.name) if model else ""
+
+    def download_task(self, spec: ModelSpec, only: list[str] | None = None) -> dict[str, Any]:
+        """Serializable description consumed by the download subprocess.
+
+        ``only`` limits a Hugging Face download to these files (one quantization of a GGUF repo).
+        """
         return {
             "id": spec.id,
             "source": spec.source,
             "repo": spec.repo_id,
             "files": spec.files,
+            "only": only or [],
             "hub_dir": str(self._settings.hub_path()),
             "files_dir": str(self.files_dir(spec)),
             "manifest": str(self.manifest_path(spec)),

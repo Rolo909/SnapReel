@@ -22,11 +22,13 @@ def test_unsent_input_survives_rebuild_and_restart(tmp_path: Path, qapp) -> None
     window.page("image").prompt.setPlainText("a cozy reading nook")
     window.page("speech").text.setPlainText("Привет, мир")
     window.page("video").prompt.setPlainText("waves at dawn")
+    window.page("chat").text.setPlainText("Придумай сюжет")
     settings.language = "en" if settings.language != "en" else "ru"
     rebuilt = open_window(qapp, services, window)
     assert rebuilt.page("image").prompt.toPlainText() == "a cozy reading nook"
     assert rebuilt.page("speech").text.toPlainText() == "Привет, мир"
     assert rebuilt.page("video").prompt.toPlainText() == "waves at dawn"
+    assert rebuilt.page("chat").text.toPlainText() == "Придумай сюжет"
 
     rebuilt.page("image").prompt.setPlainText("typed just before quitting")
     rebuilt.save_pages()
